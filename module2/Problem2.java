@@ -34,7 +34,7 @@ public class Problem2 extends BaseClass {
 
         // 3. Format total to a string with 2 decimal places
         // 4. Add resulting total to modifiedTotal
-        String modifiedTotal = String.format(%.2f, total);
+        String modifiedTotal = String.format("%.2f", total);
 
         // End Solution Edits
         System.out.println("Total Raw Value: " +total);
