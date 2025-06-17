@@ -15,14 +15,24 @@ public class Problem1 extends BaseClass {
         // Step 3: Add code to solve the problem (add/commit as needed)
         System.out.print("Output Array: ");
         // Start Solution Edits
-        
+
+        // fk222 06/16/25
+
+        // 1. Loop thorugh the given array
+        for (int i=0; i < arr.length; i++) {
+            // 2. Check if int value is an odd number
+            if(arr[i] % 2 != 0){
+                // 3. If number is odd, print number
+                System.out.print(arr[i] + ", ");
+            }
+        }
 
         // End Solution Edits
         System.out.println("");
         System.out.println("______________________________________");
     }
     public static void main(String[] args) {
-        final String ucid = "mt85"; // <-- change to your UCID
+        final String ucid = "fk222"; // <-- change to your UCID
         // no edits below this line
         printHeader(ucid, 1);
         printOdds(array1,1);
