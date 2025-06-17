@@ -22,9 +22,19 @@ public class Problem2 extends BaseClass {
         // Start Solution Edits
         // Solve Challenge 1 here
         
-      
+        // fk222 6/16/25
+
+        // 1. Loop through the array with a for loop, that iterates through each double in the array
+        for (double num : arr){
+            // 2. Add each value to the variable "total"
+            total += num;
+        }
+           
         // Solve Challenge 2 here
-        Object modifiedTotal = "?";
+
+        // 3. Format total to a string with 2 decimal places
+        // 4. Add resulting total to modifiedTotal
+        String modifiedTotal = String.format(%.2f, total);
 
         // End Solution Edits
         System.out.println("Total Raw Value: " +total);
