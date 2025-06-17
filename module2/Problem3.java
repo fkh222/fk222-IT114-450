@@ -26,6 +26,34 @@ public class Problem3 extends BaseClass {
         // 4. Convert the value back to its original type
         // 5. Add it to output array in correct spot
 
+        for (int i=0; i<arr.length; i++){
+            Object x = arr[i];
+
+            if (x instanceof Integer){
+                output[i]=Math.abs((Integer) x);
+            }
+            else if (x instanceof Double) {
+                output[i]=Math.abs((Double) x);
+            }
+            else if (x instanceof Float){
+                output[i]=Math.abs((Float) x);
+            }
+            else if (x instanceof String){
+                // checks for decimal point
+                // .parseDouble or .parseInt convert string to respective object type
+                // String.valueOf turns value back to string
+                if(((String) x).contains(".")) {
+                    output[i]=String.valueOf(Math.abs(Double.parseDouble((String) x)));
+                }
+                // no decimal, then it is integer
+                else {
+                    output[i]=String.valueOf(Math.abs(Integer.parseInt((String) x)));
+
+                } 
+            }   
+
+        }
+        
 
         // End Solution Edits
         System.out.println("Output: ");
