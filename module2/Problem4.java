@@ -31,6 +31,15 @@ public class Problem4 extends BaseClass {
         for(int i = 0; i <arr.length; i++){
             // Start Solution Edits
             
+            // fk222 6/16/25
+
+            // 1. Remove non-alphanumeric characters except spaces using .replaceAll()
+            // 2. Trim leading/trailing spaces and remove duplicate spaces with .replaceAll()
+            // 3. Convert the text to title case by converting string to array of words, 
+            //    capitalizing each word with .toUpperCase() for the first char, using .toLowerCase for rest of word
+            // 4. Add word to placeholderForModifiedPhrase
+
+
              // End Solution Edits
             System.out.println(String.format("Index[%d] \"%s\" | Middle: \"%s\"",i, placeholderForModifiedPhrase, placeholderForMiddleCharacters));
         }
