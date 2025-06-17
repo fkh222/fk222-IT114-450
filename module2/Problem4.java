@@ -34,11 +34,24 @@ public class Problem4 extends BaseClass {
             // fk222 6/16/25
 
             // 1. Remove non-alphanumeric characters except spaces using .replaceAll()
-            // 2. Trim leading/trailing spaces and remove duplicate spaces with .replaceAll()
+            // 2. Trim leading/trailing spaces and remove duplicate spaces with .replaceAll() and .trim()
             // 3. Convert the text to title case by converting string to array of words, 
             //    capitalizing each word with .toUpperCase() for the first char, using .toLowerCase for rest of word
             // 4. Add word to placeholderForModifiedPhrase
 
+            String value = arr[i];
+
+            String newValue = value.replaceAll("[^a-zA-Z0-9 ]", "");
+            newValue = newValue.trim().replaceAll(" +", " ");
+
+            String[] words = newValue.split(" ");
+            for (int j = 0; j<words.length; j++){
+                if (words[j].length() > 0){
+                    String word = words[j];
+                    String capitalized = word.substring(0,1).toUpperCase() + word.substring(1).toLowerCase();
+                    placeholderForModifiedPhrase += (capitalized + " ");
+                }
+            }
 
              // End Solution Edits
             System.out.println(String.format("Index[%d] \"%s\" | Middle: \"%s\"",i, placeholderForModifiedPhrase, placeholderForMiddleCharacters));
@@ -51,7 +64,7 @@ public class Problem4 extends BaseClass {
     }
 
     public static void main(String[] args) {
-        final String ucid = "mt85"; // <-- change to your UCID
+        final String ucid = "fk222"; // <-- change to your UCID
         // No edits below this line
         printHeader(ucid, 4);
 
