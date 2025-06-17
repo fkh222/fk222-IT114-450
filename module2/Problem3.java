@@ -17,7 +17,15 @@ public class Problem3 extends BaseClass {
         // Step 3: Add code to solve the problem (add/commit as needed)
         Object[] output = new Object[arr.length];
         // Start Solution Edits
-        
+
+        // fk222 06/16/25
+
+        // 1. Loop through each value of the given array
+        // 2. Use "instance of" in if statement to check the value's original object type
+        // 3. Convert the value to positive number
+        // 4. Convert the value back to its original type
+        // 5. Add it to output array in correct spot
+
 
         // End Solution Edits
         System.out.println("Output: ");
