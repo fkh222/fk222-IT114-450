@@ -61,7 +61,7 @@ public class SlashCommandHandler extends BaseClass {
                     int sides = Integer.parseInt(dice[1]);
 
                     if (num <= 0 || sides <= 0){
-                        System.out.println("Number of dice and number of 6 has to be positive. Try again!");
+                        System.out.println("Number of dice and number of sides has to be positive. Try again!");
                         continue;
                     }
 
