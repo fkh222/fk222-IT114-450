@@ -4,6 +4,10 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.Collections;
+import java.util.List;
+import java.util.Arrays;
+
 
 public class Server {
     private int port = 3000;
@@ -168,6 +172,16 @@ public class Server {
             sender.sendToClient("From Server: Error occured, please check format. Use /pm <target ID> <message>");
             e.printStackTrace();
         }
+    }
+
+    // fk222 6/23/25
+    // shuffle message command
+    protected synchronized void handleShuffle(ServerThread sender, String text){
+        String[] words = text.split(" ");
+        List<String> wordList = Arrays.asList(words);
+        Collections.shuffle(wordList);
+        String shuffledText = String.join(" ", wordList);
+        relay(null, String.format("Shuffled from User[%s]: %s", sender.getClientId(), shuffledText));
     }
 
     protected synchronized void handleMessage(ServerThread sender, String text) {

@@ -132,6 +132,12 @@ public class Client {
             String[] commandData = { Constants.COMMAND_TRIGGER, "pm", text};
             sendToServer(String.join(",", commandData));
             wasCommand = true;
+        } else if (text.startsWith("/shuffle")){
+            // fk222 6/23/25
+            text = text.replace("/shuffle", "").trim();
+            String[] commandData = { Constants.COMMAND_TRIGGER, "shuffle", text};
+            sendToServer(String.join(",", commandData));
+            wasCommand = true;
         }
         return wasCommand;
     }

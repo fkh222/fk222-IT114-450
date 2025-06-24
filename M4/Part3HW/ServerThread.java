@@ -209,8 +209,15 @@ public class ServerThread extends Thread {
                         wasCommand = true;
                         break;
                     case "pm":
+                        // fk222 6/23/25
                         String privateText = String.join(" ", Arrays.copyOfRange(commandData, 2, commandData.length));                        
                         server.handlePM(this, privateText);
+                        wasCommand = true;
+                        break;
+                    case "shuffle":
+                        // fk222 6/23/25
+                        String unshuffledText = String.join(" ", Arrays.copyOfRange(commandData, 2, commandData.length));                        
+                        server.handleShuffle(this, unshuffledText);
                         wasCommand = true;
                         break;
                     default:
