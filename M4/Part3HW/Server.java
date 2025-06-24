@@ -127,6 +127,17 @@ public class Server {
         relay(sender, rev);
     }
 
+    // fk222 6/23/25
+    // flip command
+    protected synchronized void handleFlip(ServerThread sender){
+        double flipValue = Math.random();
+        if (flipValue < 0.5) {
+            relay(sender, String.format("User[%s] flipped a coin and got HEADS!", sender.getClientId()) );
+        } else {
+            relay(sender, String.format("User[%s] flipped a coin and got TAILS!", sender.getClientId()) );
+        }
+    }
+
     protected synchronized void handleMessage(ServerThread sender, String text) {
         relay(sender, text);
     }

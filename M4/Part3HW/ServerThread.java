@@ -203,6 +203,11 @@ public class ServerThread extends Thread {
                         wasCommand = true;
                         break;
                     // added more cases/breaks as needed for other commands
+                    // fk222 6/23/25
+                    case "flip":
+                        server.handleFlip(this);
+                        wasCommand = true;
+                        break;
                     default:
                         break;
                 }
