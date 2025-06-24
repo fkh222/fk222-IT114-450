@@ -208,6 +208,11 @@ public class ServerThread extends Thread {
                         server.handleFlip(this);
                         wasCommand = true;
                         break;
+                    case "pm":
+                        String privateText = String.join(" ", Arrays.copyOfRange(commandData, 2, commandData.length));                        
+                        server.handlePM(this, privateText);
+                        wasCommand = true;
+                        break;
                     default:
                         break;
                 }

@@ -138,6 +138,38 @@ public class Server {
         }
     }
 
+    // fk222 6/23/25
+    // private message command
+    protected synchronized void handlePM(ServerThread sender, String text){
+        // finish code here
+        String[] splitInput = text.split(" ", 2); // splits targetID and message
+        if (splitInput.length < 2){
+            sender.sendToClient("From Server: Invalid format, use /pm <target ID> <message>");
+            return;
+        }
+
+        String targetIdString = splitInput[0];
+        String message = splitInput[1];
+
+        try {
+            long targetId = Long.parseLong(targetIdString);
+            ServerThread targetUser = connectedClients.get(targetId);
+
+            if (targetUser == null || !targetUser.isRunning()){ // checks is user doesn't exist or have disconnected
+                sender.sendToClient("From Server: User is not found or may have disconnected");
+                return;
+            }
+
+            String privateMessage = String.format("(Private) User[%s]: %s", sender.getClientId(), message);
+
+            targetUser.sendToClient(privateMessage);
+            sender.sendToClient(privateMessage);
+        } catch (Exception e){ // in case something in user's input goes wrong
+            sender.sendToClient("From Server: Error occured, please check format. Use /pm <target ID> <message>");
+            e.printStackTrace();
+        }
+    }
+
     protected synchronized void handleMessage(ServerThread sender, String text) {
         relay(sender, text);
     }
