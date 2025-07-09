@@ -150,7 +150,8 @@ public class Room implements AutoCloseable {
      * 
      * @param client
      */
-    private synchronized void disconnect(ServerThread client) {
+    // fk222 7/9/25
+    private synchronized void disconnect(ServerThread client) { 
         if (!isRunning) { // block action if Room isn't running
             return;
         }
@@ -259,9 +260,9 @@ public class Room implements AutoCloseable {
         String rev = sb.toString();
         relay(sender, rev);
     }
-
+    // fk222 7/9/25
     protected synchronized void handleMessage(ServerThread sender, String text) {
         relay(sender, text);
     }
     // end handle methods
-}
+}   // fk222 7/9/25

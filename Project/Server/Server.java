@@ -76,7 +76,7 @@ public enum Server {
             info("Closing server socket");
         }
     }
-
+    // fk222 7/8/25
     /**
      * Callback passed to ServerThread to inform Server they're ready to receive
      * data
@@ -142,7 +142,7 @@ public enum Server {
         rooms.remove(room.getName().toLowerCase());
         info(String.format("Removed room %s", room.getName()));
     }
-
+    // fk222 7/9/25
     /**
      * 
      * <p>

@@ -164,7 +164,8 @@ public class ServerThread extends BaseServerThread {
                 break;
         }
     }
-
+    // fk222 7/9/25
+    
     @Override
     protected void onInitialized() {
         // once receiving the desired client name the object is ready

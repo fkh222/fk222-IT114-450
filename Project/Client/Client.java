@@ -82,7 +82,7 @@ public enum Client {
             e.printStackTrace();
         }
         return isConnected();
-    }
+    } // fk222 7/9/25
 
     /**
      * <p>
@@ -116,6 +116,7 @@ public enum Client {
      * @return true if the text was a command or triggered a command
      * @throws IOException
      */
+    // fk222 7/9/25
     private boolean processClientCommand(String text) throws IOException {
         boolean wasCommand = false;
         if (text.startsWith(Constants.COMMAND_TRIGGER)) {
@@ -161,7 +162,7 @@ public enum Client {
                 text = text.replace(Command.REVERSE.command, "").trim();
                 sendReverse(text);
                 wasCommand = true;
-            } else if (text.startsWith(Command.CREATE_ROOM.command)) {
+            } else if (text.startsWith(Command.CREATE_ROOM.command)) { // fk222 7/9/25
                 text = text.replace(Command.CREATE_ROOM.command, "").trim();
                 if (text == null || text.length() == 0) {
                     System.out.println(TextFX.colorize("This command requires a room name as an argument", Color.RED));
@@ -196,6 +197,7 @@ public enum Client {
      * @param roomAction (join, leave, create)
      * @throws IOException
      */
+    //fk222 7/9/25
     private void sendRoomAction(String roomName, RoomAction roomAction) throws IOException {
         Payload payload = new Payload();
         payload.setMessage(roomName);
@@ -253,7 +255,7 @@ public enum Client {
         payload.setPayloadType(PayloadType.MESSAGE);
         sendToServer(payload);
     }
-
+    // fk222 7/9/25
     /**
      * Sends the client's name to the server (what the user desires to be called)
      * 
@@ -316,7 +318,7 @@ public enum Client {
         }
         System.out.println("listenToServer thread stopped");
     }
-
+    // fk222 7/9/25
     private void processPayload(Payload payload) {
         switch (payload.getPayloadType()) {
             case CLIENT_CONNECT:// unused
@@ -420,7 +422,7 @@ public enum Client {
                 error("Invalid payload type for processRoomAction");
                 break;
         }
-    }
+    } // fk222 7/9/25
 
     private void processMessage(Payload payload) {
         System.out.println(TextFX.colorize(payload.getMessage(), Color.BLUE));
