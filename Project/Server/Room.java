@@ -1,12 +1,14 @@
 package Project.Server;
+
 import java.util.concurrent.ConcurrentHashMap;
 
-import Project.Common.TextFX.Color;
-import Project.Exceptions.RoomNotFoundException;
-import Project.Exceptions.DuplicateRoomException;
 import Project.Common.Constants;
+import Project.Common.LoggerUtil;
 import Project.Common.RoomAction;
 import Project.Common.TextFX;
+import Project.Common.TextFX.Color;
+import Project.Exceptions.DuplicateRoomException;
+import Project.Exceptions.RoomNotFoundException;
 
 public class Room implements AutoCloseable {
     private final String name;// unique name of the Room
@@ -16,7 +18,7 @@ public class Room implements AutoCloseable {
     public final static String LOBBY = "lobby";
 
     private void info(String message) {
-        System.out.println(TextFX.colorize(String.format("Room[%s]: %s", name, message), Color.PURPLE));
+        LoggerUtil.INSTANCE.info(TextFX.colorize(String.format("Room[%s]: %s", name, message), Color.PURPLE));
     }
 
     public Room(String name) {
@@ -69,7 +71,7 @@ public class Room implements AutoCloseable {
                 boolean failedToSync = !incomingClient.sendClientInfo(serverThread.getClientId(),
                         serverThread.getClientName(), RoomAction.JOIN, true);
                 if (failedToSync) {
-                    System.out.println(
+                    LoggerUtil.INSTANCE.warning(
                             String.format("Removing disconnected %s from list", serverThread.getDisplayName()));
                     disconnect(serverThread);
                 }
@@ -91,7 +93,7 @@ public class Room implements AutoCloseable {
             // Send the server generated message to the current client
             boolean failedToSend = !serverThread.sendMessage(senderId, formattedMessage);
             if (failedToSend || failedToSync) {
-                System.out.println(
+                LoggerUtil.INSTANCE.warning(
                         String.format("Removing disconnected %s from list", serverThread.getDisplayName()));
                 disconnect(serverThread);
             }
@@ -134,7 +136,7 @@ public class Room implements AutoCloseable {
         clientsInRoom.values().removeIf(serverThread -> {
             boolean failedToSend = !serverThread.sendMessage(senderId, formattedMessage);
             if (failedToSend) {
-                System.out.println(
+                LoggerUtil.INSTANCE.warning(
                         String.format("Removing disconnected %s from list", serverThread.getDisplayName()));
                 disconnect(serverThread);
             }
@@ -150,8 +152,7 @@ public class Room implements AutoCloseable {
      * 
      * @param client
      */
-    // fk222 7/9/25
-    private synchronized void disconnect(ServerThread client) { 
+    private synchronized void disconnect(ServerThread client) {
         if (!isRunning) { // block action if Room isn't running
             return;
         }
@@ -165,7 +166,7 @@ public class Room implements AutoCloseable {
                 boolean failedToSend = !serverThread.sendClientInfo(disconnectingServerThread.getClientId(),
                         disconnectingServerThread.getClientName(), RoomAction.LEAVE);
                 if (failedToSend) {
-                    System.out.println(
+                    LoggerUtil.INSTANCE.warning(
                             String.format("Removing disconnected %s from list", serverThread.getDisplayName()));
                     disconnect(serverThread);
                 }
@@ -221,6 +222,10 @@ public class Room implements AutoCloseable {
     }
 
     // start handle methods
+    protected void handleListRooms(ServerThread sender, String roomQuery) {
+        sender.sendRooms(Server.INSTANCE.listRooms(roomQuery));
+    }
+
     public void handleCreateRoom(ServerThread sender, String roomName) {
         try {
             Server.INSTANCE.createRoom(roomName);
@@ -260,9 +265,9 @@ public class Room implements AutoCloseable {
         String rev = sb.toString();
         relay(sender, rev);
     }
-    // fk222 7/9/25
+
     protected synchronized void handleMessage(ServerThread sender, String text) {
         relay(sender, text);
     }
     // end handle methods
-}   // fk222 7/9/25
+}
