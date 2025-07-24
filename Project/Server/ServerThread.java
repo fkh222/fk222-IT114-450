@@ -1,10 +1,5 @@
 package Project.Server;
 
-import java.net.Socket;
-import java.util.List;
-import java.util.Objects;
-import java.util.function.Consumer;
-import Project.Common.TextFX.Color;
 import Project.Common.ConnectionPayload;
 import Project.Common.Constants;
 import Project.Common.LoggerUtil;
@@ -15,12 +10,18 @@ import Project.Common.ReadyPayload;
 import Project.Common.RoomAction;
 import Project.Common.RoomResultPayload;
 import Project.Common.TextFX;
+import Project.Common.TextFX.Color;
+import java.net.Socket;
+import java.util.List;
+import java.util.Objects;
+import java.util.function.Consumer;
 
 /**
  * A server-side representation of a single client
  */
 public class ServerThread extends BaseServerThread {
     private Consumer<ServerThread> onInitializationComplete; // callback to inform when this object is ready
+
     /**
      * A wrapper method so we don't need to keep typing out the long/complex sysout
      * line inside
