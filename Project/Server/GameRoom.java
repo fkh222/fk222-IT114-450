@@ -3,6 +3,8 @@ package Project.Server;
 import Project.Common.Constants;
 import Project.Common.Grid;
 import Project.Common.LoggerUtil;
+import Project.Common.Payload;
+import Project.Common.PayloadType;
 import Project.Common.Phase;
 import Project.Common.TextFX;
 import Project.Common.TextFX.Color;
@@ -149,16 +151,24 @@ public class GameRoom extends BaseGameRoom {
 
         // relay selected word to drawer or blank word to guessers
         try {
-            ServerThread currentPlayer = getNextPlayer();
-            if(this.getCurrentPlayer().getClientId()!=currentPlayer.getClientId()){
-                relay(null, String.format("It's %s's turn", currentPlayer.getDisplayName()));
-                relay(null, String.format("Guees the word: %s \n You have 60 seconds.",TextFX.colorize(maskWord(word), Color.GREEN))); // sends blank word to guessers
-                
-            }
-            else{relay(currentPlayer, String.format("It is your turn. Draw: %s \n You have 60 seconds.", TextFX.colorize(word, Color.GREEN)));}
+            ServerThread currentDrawer = getNextPlayer();
+            Payload message = new Payload();
+            message.setPayloadType(PayloadType.MESSAGE);
+            clientsInRoom.values().forEach(spInRoom -> {
+                if (spInRoom.getClientId()!=currentDrawer.getClientId()){
+                    message.setMessage(String.format("It's %s's turn. Guess the word: %s (You have 60 seconds).", currentDrawer.getDisplayName(), TextFX.colorize(maskWord(word), Color.GREEN)));
+                    spInRoom.sendToClient(message);
+                    // sends blank word to guessers
+                }
+                else{
+                    message.setMessage(String.format("It is your turn. Draw: %s \n You have 60 seconds.", TextFX.colorize(word, Color.GREEN)));
+                    currentDrawer.sendToClient(message);
+                }
+            });
         } catch (MissingCurrentPlayerException | PlayerNotFoundException e) {
             e.printStackTrace();
         }
+        relay(null, board.toString());
         startRoundTimer(); // 60 seconds per round, unless all guessers win before timer ends
         LoggerUtil.INSTANCE.info("onRoundStart() end");
     }
