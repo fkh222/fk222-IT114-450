@@ -1,19 +1,25 @@
 package Project.Server;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
-
 import Project.Common.Constants;
+import Project.Common.Grid;
 import Project.Common.LoggerUtil;
 import Project.Common.Phase;
+import Project.Common.TextFX;
+import Project.Common.TextFX.Color;
 import Project.Common.TimedEvent;
 import Project.Exceptions.MissingCurrentPlayerException;
 import Project.Exceptions.NotPlayersTurnException;
 import Project.Exceptions.NotReadyException;
 import Project.Exceptions.PhaseMismatchException;
 import Project.Exceptions.PlayerNotFoundException;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Random;
+import java.util.stream.Collectors;
 
 public class GameRoom extends BaseGameRoom {
 
@@ -25,6 +31,11 @@ public class GameRoom extends BaseGameRoom {
     private List<ServerThread> turnOrder = new ArrayList<>();
     private long currentTurnClientId = Constants.DEFAULT_CLIENT_ID;
     private int round = 0;
+    private Grid board = new Grid(); // generated in onSessionStart()
+
+    // word list
+    protected List<String> wordList = new ArrayList<>();
+
 
     public GameRoom(String name) {
         super(name);
@@ -59,7 +70,7 @@ public class GameRoom extends BaseGameRoom {
 
     // timer handlers
     private void startRoundTimer() {
-        roundTimer = new TimedEvent(30, () -> onRoundEnd());
+        roundTimer = new TimedEvent(60, () -> onRoundEnd());
         roundTimer.setTickCallback((time) -> System.out.println("Round Time: " + time));
     }
 
@@ -81,6 +92,28 @@ public class GameRoom extends BaseGameRoom {
             turnTimer = null;
         }
     }
+
+    // HELPER METHODS
+    // load word list
+    private void loadWordList(){
+        try (BufferedReader reader = new BufferedReader(new FileReader("Project/Server/words.txt"))) {
+        String line;
+        while ((line = reader.readLine()) != null) {
+            line = line.trim();
+            if (!line.isEmpty()) {
+                wordList.add(line);
+            }
+        }
+        LoggerUtil.INSTANCE.info("Loaded " + wordList.size() + " words.");
+    } catch (IOException e) {
+        LoggerUtil.INSTANCE.warning("Failed to load words: " + e.getMessage());
+    }
+    }
+    // mask selected word to blanks for guessers
+    private String maskWord(String word) {
+        return word.replaceAll("[A-Za-z]", "_");
+    }
+
     // end timer handlers
 
     // lifecycle methods
@@ -93,6 +126,11 @@ public class GameRoom extends BaseGameRoom {
         currentTurnClientId = Constants.DEFAULT_CLIENT_ID;
         setTurnOrder();
         round = 0;
+        // sync board dimensions with clients
+        board.generate(8, 8, true);
+        // load in word list
+        loadWordList();
+        LoggerUtil.INSTANCE.info(TextFX.colorize("Drawing Board generated: " + board, Color.PURPLE));
         LoggerUtil.INSTANCE.info("onSessionStart() end");
         onRoundStart();
     }
@@ -105,13 +143,27 @@ public class GameRoom extends BaseGameRoom {
         resetTurnStatus();
         round++;
         relay(null, String.format("Round %d has started", round));
-        // startRoundTimer(); Round timers aren't needed for turns
-        // if you do decide to use it, ensure it's reasonable and based on the number of
-        // players
+
+        String word = wordList.get(new Random().nextInt(wordList.size())); // select random word from word list
+        wordList.remove(word); // remove selected word from list to avoid duplicates in later rounds
+
+        // relay selected word to drawer or blank word to guessers
+        try {
+            ServerThread currentPlayer = getNextPlayer();
+            if(this.getCurrentPlayer().getClientId()!=currentPlayer.getClientId()){
+                relay(null, String.format("It's %s's turn", currentPlayer.getDisplayName()));
+                relay(null, String.format("Guees the word: %s \n You have 60 seconds.",TextFX.colorize(maskWord(word), Color.GREEN))); // sends blank word to guessers
+                
+            }
+            else{relay(currentPlayer, String.format("It is your turn. Draw: %s \n You have 60 seconds.", TextFX.colorize(word, Color.GREEN)));}
+        } catch (MissingCurrentPlayerException | PlayerNotFoundException e) {
+            e.printStackTrace();
+        }
+        startRoundTimer(); // 60 seconds per round, unless all guessers win before timer ends
         LoggerUtil.INSTANCE.info("onRoundStart() end");
-        onTurnStart();
     }
 
+    // turns are generally unused for this drawing game
     /** {@inheritDoc} */
     @Override
     protected void onTurnStart() {
@@ -159,7 +211,7 @@ public class GameRoom extends BaseGameRoom {
         resetRoundTimer(); // reset timer if round ended without the time expiring
 
         LoggerUtil.INSTANCE.info("onRoundEnd() end");
-        if (round >= 3) {
+        if (round >= clientsInRoom.size()) {
             onSessionEnd();
         } else {
             onRoundStart();

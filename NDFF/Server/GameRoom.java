@@ -1,23 +1,22 @@
 package NDFF.Server;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
-
-import NDFF.Common.TextFX;
-import NDFF.Common.Constants;
 import NDFF.Common.CatchData;
+import NDFF.Common.Constants;
 import NDFF.Common.Grid;
 import NDFF.Common.LoggerUtil;
 import NDFF.Common.Phase;
-import NDFF.Common.TimedEvent;
+import NDFF.Common.TextFX;
 import NDFF.Common.TextFX.Color;
+import NDFF.Common.TimedEvent;
 import NDFF.Exceptions.MissingCurrentPlayerException;
 import NDFF.Exceptions.NotPlayersTurnException;
 import NDFF.Exceptions.NotReadyException;
 import NDFF.Exceptions.PhaseMismatchException;
 import NDFF.Exceptions.PlayerNotFoundException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class GameRoom extends BaseGameRoom {
 
@@ -100,6 +99,7 @@ public class GameRoom extends BaseGameRoom {
         round = 0;
         // keep dimensions in sync with Client's Grid
         grid.generate(5, 5, true);
+        // load in word list from external file
         LoggerUtil.INSTANCE.info(TextFX.colorize("Grid generated: " + grid, Color.PURPLE));
         LoggerUtil.INSTANCE.info("onSessionStart() end");
         onRoundStart();
