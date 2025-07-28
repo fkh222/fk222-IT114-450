@@ -133,6 +133,8 @@ public class GameRoom extends BaseGameRoom {
         round = 0;
         // sync board dimensions with clients
         board.generate(8, 8, true);
+        // TODO: sync the board to clients
+        
         // load in word list
         loadWordList();
         LoggerUtil.INSTANCE.info(TextFX.colorize("Drawing Board generated: " + board, Color.PURPLE));
@@ -248,9 +250,9 @@ public class GameRoom extends BaseGameRoom {
     // send/sync data to ServerThread(s)
 
     // sync canvas/board to clients
-    private void sendCanvasUpdate(Grid board){
+    private void sendCanvasUpdate(int x, int y, String color){
         clientsInRoom.values().forEach(spInRoom -> {
-            boolean failedToSend = !spInRoom.sendCanvasUpdate(board);
+            boolean failedToSend = !spInRoom.sendCanvasUpdate(x,y,color);
             if (failedToSend) {
                 removeClient(spInRoom);
             }
@@ -448,7 +450,7 @@ public class GameRoom extends BaseGameRoom {
             else{
                 board.tryDraw(x, y, color); // try to draw drawer's request
                 relay(null, TextFX.colorize(String.format("%s is drawing on (%d,%d)", drawer.getDisplayName(), x,y), Color.BLUE));
-                sendCanvasUpdate(board);
+                sendCanvasUpdate(x,y,"black");
             }
             LoggerUtil.INSTANCE.info(TextFX.colorize("Canvas: " + board, Color.PURPLE));
         } catch (NotReadyException e){

@@ -22,7 +22,7 @@ public class Grid{
         if(!isValidCoordinate(x, y)){
             throw new IllegalArgumentException("Invalid coordinates");
         }
-        Pixel pixel = board[x][y];
+        Pixel pixel = board[x-1][y-1];
         if(pixel==null){
             throw new IllegalStateException("Pixel not initialized");
         }
@@ -31,7 +31,7 @@ public class Grid{
 
     // check coordinate validation
     public boolean isValidCoordinate(int row, int col) {
-        return board != null && row >= 0 && col >= 0 && row < board.length && col < board[0].length;
+        return board != null && row >= 0 && col >= 0 && row <= board.length && col <= board[0].length;
     }
 
    /**
@@ -59,7 +59,7 @@ public class Grid{
     }
 
     public Pixel getPixel(int row, int col) {
-        return board[row][col];
+        return board[row-1][col-1];
     }
 
     @Override

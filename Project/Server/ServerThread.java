@@ -3,7 +3,6 @@ package Project.Server;
 import Project.Common.ConnectionPayload;
 import Project.Common.Constants;
 import Project.Common.CoordPayload;
-import Project.Common.Grid;
 import Project.Common.LoggerUtil;
 import Project.Common.Payload;
 import Project.Common.PayloadType;
@@ -58,10 +57,10 @@ public class ServerThread extends BaseServerThread {
 
     // Start Send*() Methods
 
-    public boolean sendCanvasUpdate(Grid board){
+    public boolean sendCanvasUpdate(int x, int y, String color){
         // TODO: send updated canvas/board to other players as a payload message - client will process this
-        Payload payload = new Payload();
-        payload.setMessage(board.toString());
+        CoordPayload payload = new CoordPayload(x,y,color);
+        payload.setPayloadType(PayloadType.DRAW);
         return sendToClient(payload);
     }
 

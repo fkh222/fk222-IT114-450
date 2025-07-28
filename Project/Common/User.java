@@ -97,4 +97,13 @@ public class User {
         this.isDrawer = roundDrawer;
     }
 
+
+    /**
+     * Resets the session state for the user.
+     */
+    public void resetSession() {
+        this.isReady = false;
+        this.isDrawer = false;
+        // TODO: add reset points here
+    }
 }

@@ -21,12 +21,14 @@ import Project.Common.LoggerUtil;
 import Project.Common.Payload;
 import Project.Common.PayloadType;
 import Project.Common.Phase;
+import Project.Common.Pixel;
 import Project.Common.ReadyPayload;
 import Project.Common.RoomAction;
 import Project.Common.RoomResultPayload;
 import Project.Common.TextFX;
 import Project.Common.User;
 import Project.Common.TextFX.Color;
+import Project.Exceptions.CoordNotFound;
 
 /**
  * Demoing bi-directional communication between client and server in a
@@ -222,11 +224,12 @@ public enum Client {
                 wasCommand = true;
             } else if (text.startsWith(Command.DRAW.command)){ // project specific commands start here
                 text = text.replace(Command.DRAW.command, "").trim();
-                if (!myUser.isDrawer()){  //checks if client is the round's drawer
+                /**if (!myUser.isDrawer()){  //checks if client is the round's drawer
                     LoggerUtil.INSTANCE
                             .warning(TextFX.colorize("You are not this round's drawer", Color.RED));
                     return true;
                 }
+                */
                 String[] coordinates = text.split(",");
                 if (coordinates.length!=2){
                     LoggerUtil.INSTANCE
@@ -470,6 +473,9 @@ public enum Client {
                 // note no data necessary as this is just a trigger
                 processResetTurn();
                 break;
+            case PayloadType.DRAW:
+                processCanvasUpdate(payload);
+                break;
             default:
                 LoggerUtil.INSTANCE.warning(TextFX.colorize("Unhandled payload type", Color.YELLOW));
                 break;
@@ -478,6 +484,27 @@ public enum Client {
     }
 
     // Start process*() methods
+
+    private void processCanvasUpdate(Payload payload){
+         if (!(payload instanceof CoordPayload)) {
+            error("Invalid payload subclass for processTurn");
+            return;
+        }
+        CoordPayload cp = (CoordPayload) payload;
+        if (!board.isValidCoordinate(cp.getX(), cp.getY())){
+            LoggerUtil.INSTANCE.warning("Coordinates out of canvas bounds");
+            return;
+        }
+        Pixel pixel = board.getPixel(cp.getX(), cp.getY());
+        if (pixel == null){
+            LoggerUtil.INSTANCE.warning("Pixel not initialized");
+            return;
+        }
+        pixel.tryDraw(TextFX.Color.BLACK);
+        LoggerUtil.INSTANCE.info("Updated Canvas: " + board.toString());
+
+    }
+
     private void processResetTurn() {
         knownClients.values().forEach(cp -> cp.setTookTurn(false));
         System.out.println("Turn status reset for everyone");
@@ -508,6 +535,16 @@ public enum Client {
     private void processPhase(Payload payload) {
         currentPhase = Enum.valueOf(Phase.class, payload.getMessage());
         System.out.println(TextFX.colorize("Current phase is " + currentPhase.name(), Color.YELLOW));
+        if (currentPhase == Phase.READY) {
+            // treat this as a session reset
+            knownClients.values().forEach(user -> {
+                myUser.resetSession();
+            });
+            board.reset();
+        } else if (currentPhase == Phase.IN_PROGRESS) {
+            // switched from ready to in-progress, init local grid
+            board.generate(8,8, false);
+        }
     }
 
     private void processResetReady() {
