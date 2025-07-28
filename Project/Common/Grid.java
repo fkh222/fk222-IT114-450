@@ -18,7 +18,7 @@ public class Grid{
     }
 
     // attempt to draw in pixel
-    public String tryDraw(int x, int y, TextFX.Color color){
+    public void tryDraw(int x, int y, TextFX.Color color){
         if(!isValidCoordinate(x, y)){
             throw new IllegalArgumentException("Invalid coordinates");
         }
@@ -26,7 +26,7 @@ public class Grid{
         if(pixel==null){
             throw new IllegalStateException("Pixel not initialized");
         }
-        return pixel.tryDraw(color);
+        pixel.tryDraw(color);
     }
 
     // check coordinate validation

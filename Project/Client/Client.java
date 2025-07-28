@@ -1,5 +1,6 @@
 package Project.Client;
 
+import Project.Common.CoordPayload;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -219,6 +220,37 @@ public enum Client {
 
                 sendDoTurn(text);
                 wasCommand = true;
+            } else if (text.startsWith(Command.DRAW.command)){ // project specific commands start here
+                text = text.replace(Command.DRAW.command, "").trim();
+                if (!myUser.isDrawer()){  //checks if client is the round's drawer
+                    LoggerUtil.INSTANCE
+                            .warning(TextFX.colorize("You are not this round's drawer", Color.RED));
+                    return true;
+                }
+                String[] coordinates = text.split(",");
+                if (coordinates.length!=2){
+                    LoggerUtil.INSTANCE
+                            .warning(TextFX.colorize("The draw command requires 2 integer coordinates X and Y: /draw <x>,<y>", Color.RED));
+                    return true;
+                }
+                try {
+                    int x = Integer.parseInt(coordinates[0].trim());
+                    int y = Integer.parseInt(coordinates[1].trim());
+                    String color = "Black";
+                    if (board.isValidCoordinate(x, y) | !board.getPixel(x, y).isAlreadyDrawn()){ // checks if coord is valid or already drawn
+                        LoggerUtil.INSTANCE
+                                .info(TextFX.colorize(String.format("Drawing on (%d, %d)", x, y), Color.GREEN));
+                        sendDraw(x, y, color);
+                    }
+                    else{
+                        LoggerUtil.INSTANCE.warning(TextFX.colorize("Coordinates out of canvas bounds or already drawn", Color.RED));
+                    }
+                } catch (NumberFormatException e) {
+                    LoggerUtil.INSTANCE
+                            .warning(TextFX.colorize("The draw command requires 2 integer coordinates X and Y: /draw <x>,<y>", Color.RED));
+                    return true;
+                }
+                wasCommand = true;
             }
         }
         return wasCommand;
@@ -337,6 +369,12 @@ public enum Client {
             LoggerUtil.INSTANCE.warning(
                     "Not connected to server (hint: type `/connect host:port` without the quotes and replace host/port with the necessary info)");
         }
+    }
+
+    private void sendDraw(int x, int y, String color) throws IOException {
+        CoordPayload payload = new CoordPayload(x,y,color);
+        payload.setPayloadType(PayloadType.DRAW);
+        sendToServer(payload);
     }
     // End Send*() methods
 

@@ -6,6 +6,7 @@ public class User {
     private boolean isReady = false;
     private boolean tookTurn = false;
     private int points=0;
+    private boolean isDrawer=false;
 
     /**
      * @return the clientId
@@ -79,6 +80,21 @@ public class User {
      */
      public void setClientPoints(int addedPoints){
         this.points=addedPoints;
+    }
+
+    //sets drawer status and checks if drawer of that round
+    /**
+     * @return drawer status
+     */
+    public boolean isDrawer(){
+        return this.isDrawer;
+    }
+
+    /**
+     * @param roundDrawer true if user is selected as drawer in round otherwise false 
+     */
+    public void setDrawer(boolean roundDrawer){ 
+        this.isDrawer = roundDrawer;
     }
 
 }

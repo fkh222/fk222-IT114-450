@@ -2,6 +2,8 @@ package Project.Server;
 
 import Project.Common.ConnectionPayload;
 import Project.Common.Constants;
+import Project.Common.CoordPayload;
+import Project.Common.Grid;
 import Project.Common.LoggerUtil;
 import Project.Common.Payload;
 import Project.Common.PayloadType;
@@ -55,6 +57,14 @@ public class ServerThread extends BaseServerThread {
     }
 
     // Start Send*() Methods
+
+    public boolean sendCanvasUpdate(Grid board){
+        // TODO: send updated canvas/board to other players as a payload message - client will process this
+        Payload payload = new Payload();
+        payload.setMessage(board.toString());
+        return sendToClient(payload);
+    }
+
     public boolean sendResetTurnStatus() {
         ReadyPayload rp = new ReadyPayload();
         rp.setPayloadType(PayloadType.RESET_TURN);
@@ -247,6 +257,18 @@ public class ServerThread extends BaseServerThread {
                     sendMessage(Constants.DEFAULT_CLIENT_ID, "You must be in a GameRoom to do a turn");
                 }
                 break;
+            case DRAW:
+                CoordPayload cp = (CoordPayload) incoming;
+                try {
+                    if (!this.isDrawer()){ // checks again if this serverthread/user is the round's drawer
+                        sendMessage(this.getClientId(), "You are not this round's drawer");
+                    }   
+                    else {
+                        ((GameRoom) currentRoom).handleDraw(this, cp.getX(), cp.getY(), TextFX.Color.BLACK);
+                        } // else, handleDraw() in gameroom
+                } catch (Exception e) {
+                    sendMessage(Constants.DEFAULT_CLIENT_ID, "You must be in a GameRoom to play");
+                }
             default:
                 LoggerUtil.INSTANCE.warning(TextFX.colorize("Unknown payload type received", Color.RED));
                 break;
@@ -268,6 +290,13 @@ public class ServerThread extends BaseServerThread {
 
     protected void setTookTurn(boolean tookTurn) {
         this.user.setTookTurn(tookTurn);
+    }
+    //sets drawer status and checks if drawer of that round
+    protected void setDrawer(boolean roundDrawer){
+        this.user.setDrawer(roundDrawer);
+    }
+    protected boolean isDrawer(){
+        return this.user.isDrawer();
     }
 
     @Override

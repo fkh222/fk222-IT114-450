@@ -15,7 +15,9 @@ public enum Command {
     LIST_USERS("users"),
     LIST_ROOMS("listrooms"),
     READY("ready"),
-    EXAMPLE_TURN("exampleturn");
+    EXAMPLE_TURN("exampleturn"),
+    DRAW("draw"),
+    GUESS("guess");
 
 
 

@@ -33,10 +33,13 @@ public class GameRoom extends BaseGameRoom {
     private List<ServerThread> turnOrder = new ArrayList<>();
     private long currentTurnClientId = Constants.DEFAULT_CLIENT_ID;
     private int round = 0;
-    private Grid board = new Grid(); // generated in onSessionStart()
 
-    // word list
-    protected List<String> wordList = new ArrayList<>();
+    // Project specifics
+    private Grid board = new Grid(); // generated in onSessionStart()
+    private ServerThread currentDrawer; // selected drawer of the round
+    private List<String> wordList = new ArrayList<>(); // word list
+    private String chosenWord = "";
+
 
 
     public GameRoom(String name) {
@@ -146,22 +149,23 @@ public class GameRoom extends BaseGameRoom {
         round++;
         relay(null, String.format("Round %d has started", round));
 
-        String word = wordList.get(new Random().nextInt(wordList.size())); // select random word from word list
-        wordList.remove(word); // remove selected word from list to avoid duplicates in later rounds
+        chosenWord = wordList.get(new Random().nextInt(wordList.size())); // select random word from word list
+        wordList.remove(chosenWord); // remove selected word from list to avoid duplicates in later rounds
 
         // relay selected word to drawer or blank word to guessers
         try {
-            ServerThread currentDrawer = getNextPlayer();
+            currentDrawer = getNextPlayer();
+            currentDrawer.setDrawer(true);
             Payload message = new Payload();
             message.setPayloadType(PayloadType.MESSAGE);
             clientsInRoom.values().forEach(spInRoom -> {
                 if (spInRoom.getClientId()!=currentDrawer.getClientId()){
-                    message.setMessage(String.format("It's %s's turn. Guess the word: %s (You have 60 seconds).", currentDrawer.getDisplayName(), TextFX.colorize(maskWord(word), Color.GREEN)));
+                    message.setMessage(String.format("It's %s's turn. Guess the word: %s (You have 60 seconds).", currentDrawer.getDisplayName(), TextFX.colorize(maskWord(chosenWord), Color.GREEN)));
                     spInRoom.sendToClient(message);
                     // sends blank word to guessers
                 }
                 else{
-                    message.setMessage(String.format("It is your turn. Draw: %s \n You have 60 seconds.", TextFX.colorize(word, Color.GREEN)));
+                    message.setMessage(String.format("It is your turn. Draw: %s \n You have 60 seconds.", TextFX.colorize(chosenWord, Color.GREEN)));
                     currentDrawer.sendToClient(message);
                 }
             });
@@ -242,6 +246,17 @@ public class GameRoom extends BaseGameRoom {
     // end lifecycle methods
 
     // send/sync data to ServerThread(s)
+
+    // sync canvas/board to clients
+    private void sendCanvasUpdate(Grid board){
+        clientsInRoom.values().forEach(spInRoom -> {
+            boolean failedToSend = !spInRoom.sendCanvasUpdate(board);
+            if (failedToSend) {
+                removeClient(spInRoom);
+            }
+        });
+    }
+
     private void sendResetTurnStatus() {
         clientsInRoom.values().forEach(spInRoom -> {
             boolean failedToSend = !spInRoom.sendResetTurnStatus();
@@ -414,5 +429,47 @@ public class GameRoom extends BaseGameRoom {
         }
     }
 
+    // handle DRAW action (sent from ServerThread)
+    public void handleDraw(ServerThread drawer, int x, int y, TextFX.Color color){
+        // TODO: gameroom handles draw action - change pixel in board to drawn pixel, then send result back to client and sync board
+        try{
+            //checks
+            checkPlayerInRoom(drawer);
+            checkCurrentPhase(drawer, Phase.IN_PROGRESS);
+            checkCurrentPlayer(drawer.getClientId());
+            checkIsReady(drawer);
+            if (!drawer.isDrawer()){
+                drawer.sendMessage(drawer.getClientId(), "You are not this round's drawer");
+            }
+            else if (!board.isValidCoordinate(x,y)){
+                drawer.sendMessage(drawer.getClientId(), "Coordinates out of canvas bounds");
+
+            }
+            else{
+                board.tryDraw(x, y, color); // try to draw drawer's request
+                relay(null, TextFX.colorize(String.format("%s is drawing on (%d,%d)", drawer.getDisplayName(), x,y), Color.BLUE));
+                sendCanvasUpdate(board);
+            }
+            LoggerUtil.INSTANCE.info(TextFX.colorize("Canvas: " + board, Color.PURPLE));
+        } catch (NotReadyException e){
+            // The check method already informs the currentUser
+            LoggerUtil.INSTANCE.severe("handleDraw exception", e);
+        } catch (PlayerNotFoundException e) {
+            drawer.sendMessage(Constants.DEFAULT_CLIENT_ID, "You must be in a GameRoom to play the game");
+            LoggerUtil.INSTANCE.severe("handleDraw exception", e);
+        } catch (PhaseMismatchException e) {
+            drawer.sendMessage(Constants.DEFAULT_CLIENT_ID,
+                    "You can only play during the IN_PROGRESS phase");
+            LoggerUtil.INSTANCE.severe("handleDraw exception", e);
+        } catch (Exception e) {
+            LoggerUtil.INSTANCE.severe("handleDraw exception", e);
+        }
+
+
+    }
+    // handle GUESS action (sent from ServerThread)
+    public void handleGuess(ServerThread player, String guess){
+        //TODO: gameroom handles guess action - compare guess to chosen word, evaluate points, send back to client and sync points
+    }
     // end receive data from ServerThread (GameRoom specific)
 }
