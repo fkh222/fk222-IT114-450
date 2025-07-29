@@ -268,6 +268,19 @@ public class ServerThread extends BaseServerThread {
                 } catch (Exception e) {
                     sendMessage(Constants.DEFAULT_CLIENT_ID, "You must be in a GameRoom to play");
                 }
+                break;
+            case GUESS:
+                Payload payload = incoming;
+                try {
+                    if (this.isDrawer()){
+                        sendMessage(this.getClientId(), "Drawer cannot guess in this round");
+                    }
+                    else {
+                        ((GameRoom) currentRoom).handleGuess(this, payload.getMessage());
+                    }
+                } catch (Exception e) {
+                }
+                break;
             default:
                 LoggerUtil.INSTANCE.warning(TextFX.colorize("Unknown payload type received", Color.RED));
                 break;
@@ -296,6 +309,14 @@ public class ServerThread extends BaseServerThread {
     }
     protected boolean isDrawer(){
         return this.user.isDrawer();
+    }
+
+    // gets and sets user's points
+    protected int getClientPoints(){
+        return this.user.getClientPoints();
+    }
+    protected void setClientPoints(int points){
+        this.user.setClientPoints(points);
     }
 
     @Override

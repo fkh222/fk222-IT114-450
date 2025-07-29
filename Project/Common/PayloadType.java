@@ -25,5 +25,9 @@ public enum PayloadType {
                   // GameRoom
        RESET_TURN, // trigger to tell client to reset their local list turn status
        DRAW, // used to draw on coordinates
-       POINTS // track points of users
+       SYNC_BOARD,
+       POINTS, // track points of users
+       SYNC_POINTS,
+       GUESS,
+
 }

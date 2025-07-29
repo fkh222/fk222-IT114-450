@@ -254,7 +254,16 @@ public enum Client {
                     return true;
                 }
                 wasCommand = true;
+            } else if (text.startsWith(Command.GUESS.command)){
+                text = text.replace(Command.GUESS.command, "").trim();
+                if (text==null){
+                    LoggerUtil.INSTANCE
+                            .warning(TextFX.colorize("The guess command requires at least one word", Color.RED));
+                }
+                sendGuess(text);
+                wasCommand=true;
             }
+
         }
         return wasCommand;
     }
@@ -372,6 +381,13 @@ public enum Client {
             LoggerUtil.INSTANCE.warning(
                     "Not connected to server (hint: type `/connect host:port` without the quotes and replace host/port with the necessary info)");
         }
+    }
+
+    private void sendGuess(String guess) throws IOException {
+        Payload payload = new Payload();
+        payload.setPayloadType(PayloadType.GUESS);
+        payload.setMessage(guess);
+        sendToServer(payload);
     }
 
     private void sendDraw(int x, int y, String color) throws IOException {
@@ -543,6 +559,9 @@ public enum Client {
             board.reset();
         } else if (currentPhase == Phase.IN_PROGRESS) {
             // switched from ready to in-progress, init local grid
+            if (!myUser.isReady()){
+                
+            }
             board.generate(8,8, false);
         }
     }

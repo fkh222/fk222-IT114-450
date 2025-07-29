@@ -31,7 +31,7 @@ public class Grid{
 
     // check coordinate validation
     public boolean isValidCoordinate(int row, int col) {
-        return board != null && row >= 0 && col >= 0 && row <= board.length && col <= board[0].length;
+        return board != null && row >= 0 && col >= 0 && row < board.length && col < board[0].length;
     }
 
    /**
@@ -59,7 +59,7 @@ public class Grid{
     }
 
     public Pixel getPixel(int row, int col) {
-        return board[row-1][col-1];
+        return board[row][col];
     }
 
     @Override

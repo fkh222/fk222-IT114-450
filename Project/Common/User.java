@@ -79,7 +79,7 @@ public class User {
      * @param addedPoints the points to add
      */
      public void setClientPoints(int addedPoints){
-        this.points=addedPoints;
+        this.points+=addedPoints;
     }
 
     //sets drawer status and checks if drawer of that round
@@ -96,6 +96,7 @@ public class User {
     public void setDrawer(boolean roundDrawer){ 
         this.isDrawer = roundDrawer;
     }
+
 
 
     /**

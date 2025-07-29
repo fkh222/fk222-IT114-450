@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 public class GameRoom extends BaseGameRoom {
@@ -39,7 +40,7 @@ public class GameRoom extends BaseGameRoom {
     private ServerThread currentDrawer; // selected drawer of the round
     private List<String> wordList = new ArrayList<>(); // word list
     private String chosenWord = "";
-
+    protected final ConcurrentHashMap<Long, ServerThread> correctGuessers = new ConcurrentHashMap<Long, ServerThread>(); // list to store correct guessers each round
 
 
     public GameRoom(String name) {
@@ -53,6 +54,8 @@ public class GameRoom extends BaseGameRoom {
         syncCurrentPhase(sp);
         syncReadyStatus(sp);
         syncTurnStatus(sp);
+        // 
+        
     }
 
     /** {@inheritDoc} */
@@ -134,7 +137,7 @@ public class GameRoom extends BaseGameRoom {
         // sync board dimensions with clients
         board.generate(8, 8, true);
         // TODO: sync the board to clients
-        
+
         // load in word list
         loadWordList();
         LoggerUtil.INSTANCE.info(TextFX.colorize("Drawing Board generated: " + board, Color.PURPLE));
@@ -225,6 +228,21 @@ public class GameRoom extends BaseGameRoom {
     protected void onRoundEnd() {
         LoggerUtil.INSTANCE.info("onRoundEnd() start");
         resetRoundTimer(); // reset timer if round ended without the time expiring
+        
+        // add points to round's correct guessers
+        int maxPoints = 10;
+        int numCorrect = correctGuessers.size();
+        int points = Math.max(1, Math.min(maxPoints, numCorrect)); // Starting points
+
+        int currentPoints = points;
+        for (ServerThread guesser : correctGuessers.values()) {
+            guesser.setClientPoints(currentPoints);
+            currentPoints = Math.max(1, currentPoints - 1);
+        }
+
+        // clear board and the correct guessers hashmap
+        board.reset();
+        correctGuessers.clear();
 
         LoggerUtil.INSTANCE.info("onRoundEnd() end");
         if (round >= clientsInRoom.size()) {
@@ -249,7 +267,7 @@ public class GameRoom extends BaseGameRoom {
 
     // send/sync data to ServerThread(s)
 
-    // sync canvas/board to clients
+    // sync canvas/board updates to clients
     private void sendCanvasUpdate(int x, int y, String color){
         clientsInRoom.values().forEach(spInRoom -> {
             boolean failedToSend = !spInRoom.sendCanvasUpdate(x,y,color);
@@ -258,6 +276,7 @@ public class GameRoom extends BaseGameRoom {
             }
         });
     }
+
 
     private void sendResetTurnStatus() {
         clientsInRoom.values().forEach(spInRoom -> {
@@ -291,6 +310,7 @@ public class GameRoom extends BaseGameRoom {
             }
         });
     }
+
 
     // end send data to ServerThread(s)
 
@@ -472,6 +492,34 @@ public class GameRoom extends BaseGameRoom {
     // handle GUESS action (sent from ServerThread)
     public void handleGuess(ServerThread player, String guess){
         //TODO: gameroom handles guess action - compare guess to chosen word, evaluate points, send back to client and sync points
+        try {
+            //checks
+            checkPlayerInRoom(player);
+            checkCurrentPhase(player, Phase.IN_PROGRESS);
+            checkCurrentPlayer(player.getClientId());
+            if (correctGuessers.containsKey(player.getClientId())){
+            player.sendMessage(player.getClientId(), "You already guessed correctly");
+            }
+            else if (guess.toLowerCase().equals(chosenWord)){
+                correctGuessers.put(player.getClientId(), player);
+                relay(null, TextFX.colorize(String.format("$s guessed correctly", player.getClientName()), TextFX.Color.GREEN));
+                if (correctGuessers.size()==(clientsInRoom.size()-1)){ // checks if all players guessed correctly aside from drawer
+                    onRoundEnd();
+                }
+            }
+            else {
+                relay(null, TextFX.colorize(String.format("$s guessed $s and it wasn't correct", player.getClientName(), guess), TextFX.Color.BLUE));
+            }
+        } catch (PlayerNotFoundException e) {
+            player.sendMessage(Constants.DEFAULT_CLIENT_ID, "You must be in a GameRoom to play the game");
+            LoggerUtil.INSTANCE.severe("handleGuess exception", e);
+        } catch (PhaseMismatchException e) {
+            player.sendMessage(Constants.DEFAULT_CLIENT_ID,
+                    "You can only play during the IN_PROGRESS phase");
+            LoggerUtil.INSTANCE.severe("handleGuess exception", e);
+        } catch (Exception e) {
+            LoggerUtil.INSTANCE.severe("handleGuess exception", e);
+        }
     }
     // end receive data from ServerThread (GameRoom specific)
 }
