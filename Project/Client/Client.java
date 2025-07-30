@@ -242,10 +242,13 @@ public enum Client {
                     int x = Integer.parseInt(coordinates[0].trim());
                     int y = Integer.parseInt(coordinates[1].trim());
                     String color = "Black";
-                    if (board.isValidCoordinate(x, y) | !board.getPixel(x, y).isAlreadyDrawn()){ // checks if coord is valid or already drawn
-                        LoggerUtil.INSTANCE
+                    if (board.isValidCoordinate(x, y)){
+                         // checks if coord is valid or already drawn
+                        if (!board.getPixel(x, y).isAlreadyDrawn()){
+                            LoggerUtil.INSTANCE
                                 .info(TextFX.colorize(String.format("Drawing on (%d, %d)", x, y), Color.GREEN));
-                        sendDraw(x, y, color);
+                            sendDraw(x, y, color);
+                        }
                     }
                     else{
                         LoggerUtil.INSTANCE.warning(TextFX.colorize("Coordinates out of canvas bounds or already drawn", Color.RED));
@@ -500,6 +503,9 @@ public enum Client {
             case PayloadType.CLEAR_BOARD:
                 processClearBoard(payload);
                 break;
+            case PayloadType.SYNC_BOARD:
+                processSyncBoard(payload);
+                break;
             default:
                 LoggerUtil.INSTANCE.warning(TextFX.colorize("Unhandled payload type", Color.YELLOW));
                 break;
@@ -509,6 +515,8 @@ public enum Client {
 
     // Start process*() methods
 
+
+    // update canvas/board updates to client
     private void processCanvasUpdate(Payload payload){
          if (!(payload instanceof CoordPayload)) {
             error("Invalid payload subclass for processCanvasUpdate");
@@ -529,12 +537,38 @@ public enum Client {
 
     }
 
+    // clears client's board
     private void processClearBoard(Payload payload){
         this.board.reset();
         this.board.generate(8,8,false);
         LoggerUtil.INSTANCE.info("Cleaning Canvas . . . ");
     }
 
+    // syncs board (specifically for newly joined users)
+    private void processSyncBoard(Payload payload){
+        // same logic as processSendCanvasUpdate but sync board quietly
+        if (!(payload instanceof CoordPayload)) {
+            error("Invalid payload subclass for processSyncBoard");
+            return;
+        }
+        CoordPayload cp = (CoordPayload) payload;
+        if (!board.isValidCoordinate(cp.getX(), cp.getY())){
+            LoggerUtil.INSTANCE.warning("Coordinates out of canvas bounds");
+            return;
+        }
+        Pixel pixel = board.getPixel(cp.getX(), cp.getY());
+        if (pixel == null){
+            LoggerUtil.INSTANCE.warning("Pixel not initialized");
+            return;
+        }
+        // difference from processCanvasUpdate - only changes coord if the pixel sent from server is drawn and updates the client's board
+        if (!cp.getColor().equals("-")){
+            pixel.tryDraw(TextFX.Color.BLACK);
+        }
+    }
+
+
+    // sends points status from server to client's scoreboard
     private void processPointsStatus(Payload payload){
         if (!(payload instanceof PointsPayload)) {
             error("Invalid payload subclass for processPointsStatus");
@@ -553,11 +587,14 @@ public enum Client {
         scoreboard.putAll(updatedPoints); // update with the new one
 
         LoggerUtil.INSTANCE.info("This round's Scoreboard:");
+
+        StringBuilder scoreboardMessage = new StringBuilder("This round's Scoreboard:\n");
         updatedPoints.entrySet().stream()
             .sorted(ConcurrentHashMap.Entry.<String, Integer>comparingByValue().reversed())
-            .forEach(entry ->
-            LoggerUtil.INSTANCE.info(String.format("Player: %s | Points: %d", entry.getKey(), entry.getValue()))
-        );
+            .forEach(entry -> scoreboardMessage.append(
+            String.format("Player: %s | Points: %d\n", entry.getKey(), entry.getValue())
+        ));
+        LoggerUtil.INSTANCE.info(scoreboardMessage);
     }
 
     private void processResetTurn() {

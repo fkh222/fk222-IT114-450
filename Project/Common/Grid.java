@@ -1,5 +1,6 @@
 package Project.Common;
 
+import Project.Exceptions.CoordNotFound;
 
 public class Grid{
     private Pixel[][] board;
@@ -18,20 +19,21 @@ public class Grid{
     }
 
     // attempt to draw in pixel
-    public void tryDraw(int x, int y, TextFX.Color color){
-        if(!isValidCoordinate(x, y)){
-            throw new IllegalArgumentException("Invalid coordinates");
+    public void tryDraw(int x, int y, TextFX.Color color) throws CoordNotFound{
+        if (!isValidCoordinate(x, y)) { // validate before accessing
+            throw new CoordNotFound("Invalid coordinate: (" + x + "," + y + ")");
         }
-        Pixel pixel = board[x-1][y-1];
+        
+        Pixel pixel = board[y][x]; // reversed because of board preference
         if(pixel==null){
-            throw new IllegalStateException("Pixel not initialized");
+            throw new IllegalStateException("Pixel not initialized"); // shouldn't ever happen but just in case
         }
         pixel.tryDraw(color);
     }
 
     // check coordinate validation
-    public boolean isValidCoordinate(int row, int col) {
-        return board != null && row >= 0 && col >= 0 && row < board.length && col < board[0].length;
+    public boolean isValidCoordinate(int x, int y) {
+        return board != null && y >= 0 && x >= 0 && y < board.length && x < board[0].length;
     }
 
    /**
@@ -60,6 +62,10 @@ public class Grid{
 
     public Pixel getPixel(int row, int col) {
         return board[row][col];
+    }
+
+    public Pixel[][] getGrid(){
+        return this.board;
     }
 
     @Override

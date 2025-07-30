@@ -3,10 +3,12 @@ package Project.Server;
 import Project.Common.ConnectionPayload;
 import Project.Common.Constants;
 import Project.Common.CoordPayload;
+import Project.Common.Grid;
 import Project.Common.LoggerUtil;
 import Project.Common.Payload;
 import Project.Common.PayloadType;
 import Project.Common.Phase;
+import Project.Common.Pixel;
 import Project.Common.PointsPayload;
 import Project.Common.ReadyPayload;
 import Project.Common.RoomAction;
@@ -64,6 +66,22 @@ public class ServerThread extends BaseServerThread {
         CoordPayload payload = new CoordPayload(x,y,color);
         payload.setPayloadType(PayloadType.DRAW);
         return sendToClient(payload);
+    }
+
+
+    public boolean sendBoardStatus(long clientId, Grid board) {
+        boolean success = true;
+        for (Pixel[] pixels : board.getGrid()) { // each row of board
+            for (Pixel pixel : pixels){ // each individual pixel
+                CoordPayload payload = new CoordPayload(pixel.getX(), pixel.getY(), pixel.getColor());
+                payload.setPayloadType(PayloadType.SYNC_BOARD);
+                boolean sent = sendToClient(payload);
+                if (!sent) {
+                    success = false; // Track if any send payload failed
+                }
+            }
+        }
+        return success;
     }
 
     public boolean syncClearBoard(){

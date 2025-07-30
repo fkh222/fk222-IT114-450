@@ -14,6 +14,8 @@ import Project.Exceptions.NotPlayersTurnException;
 import Project.Exceptions.NotReadyException;
 import Project.Exceptions.PhaseMismatchException;
 import Project.Exceptions.PlayerNotFoundException;
+import Project.Exceptions.CoordNotFound;
+
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
@@ -56,7 +58,10 @@ public class GameRoom extends BaseGameRoom {
         syncCurrentPhase(sp);
         syncReadyStatus(sp);
         syncTurnStatus(sp);
-        // 
+        // project specific syncing if new client joins mid-game
+        if (this.currentPhase==Phase.IN_PROGRESS){ 
+            sendBoardStatus(sp, board);
+        }
         
     }
 
@@ -145,8 +150,10 @@ public class GameRoom extends BaseGameRoom {
         round = 0;
         // initialize board dimensions
         board.generate(8, 8, true); 
-        // TODO: sync the board to clients
-        initializeScoreboard();  // initialize scoreboard
+        
+
+
+        initializeScoreboard();  // initialize scoreboard 
         // load in word list
         loadWordList();
         LoggerUtil.INSTANCE.info(TextFX.colorize("Drawing Board generated: " + board, Color.PURPLE));
@@ -237,7 +244,9 @@ public class GameRoom extends BaseGameRoom {
     protected void onRoundEnd() {
         LoggerUtil.INSTANCE.info("onRoundEnd() start");
         resetRoundTimer(); // reset timer if round ended without the time expiring
-        currentDrawer.setDrawer(false);
+        if (clientsInRoom.containsKey(currentDrawer.getClientId())){
+            currentDrawer.setDrawer(false);
+        }
         // add points to round's correct guessers
         int maxPoints = 10;
         int numCorrect = correctGuessers.size();
@@ -253,6 +262,27 @@ public class GameRoom extends BaseGameRoom {
 
         // sync and print round's updated scoreboard
         syncPointsStatus(scoreboard); 
+
+        // simplify server's scoreboard for printing on client side
+        ConcurrentHashMap<String, Integer> simpleScoreboard = new ConcurrentHashMap<>();
+        for (ConcurrentHashMap.Entry<ServerThread, Integer> entry : scoreboard.entrySet()) {
+            if (clientsInRoom.containsKey(entry)){ // checks if client is still in room
+                simpleScoreboard.put(entry.getKey().getClientName(), entry.getValue());
+            }
+            else {
+                scoreboard.remove(entry); // else, remove them from overall scoreboard
+            }
+        }
+        StringBuilder scoreboardMessage = new StringBuilder("This round's Scoreboard:\n");
+        simpleScoreboard.entrySet().stream()
+            .sorted(ConcurrentHashMap.Entry.<String, Integer>comparingByValue().reversed())
+            .forEach(entry -> scoreboardMessage.append(
+            String.format("Player: %s | Points: %d\n", entry.getKey(), entry.getValue())
+        ));
+        relay(null, scoreboardMessage.toString().trim());
+
+
+
 
         // clear board and the correct guessers hashmap
         board.reset();
@@ -296,6 +326,11 @@ public class GameRoom extends BaseGameRoom {
         for (ServerThread player : clientsInRoom.values()) {
             player.setClientPoints(0);
         } // change all client's points back to 0
+        // set internal server's scoreboard points to 0
+        for (ConcurrentHashMap.Entry<ServerThread, Integer> entry : scoreboard.entrySet()) {
+            entry.setValue(0);
+        }
+        syncPointsStatus(scoreboard);  // sync cleared points
 
         // other general session end logic
         turnOrder.clear();
@@ -320,7 +355,16 @@ public class GameRoom extends BaseGameRoom {
         });
     }
 
-    // sync overall board to clients
+    // send board status to new clients
+    private void sendBoardStatus(ServerThread client, Grid board){
+        clientsInRoom.values().removeIf(spInRoom -> {
+            boolean failedToSend = !spInRoom.sendBoardStatus(client.getClientId(), board);
+            if (failedToSend) {
+                removeClient(spInRoom);
+            }
+            return failedToSend;
+        });
+    }
 
     private void syncClearBoard(){
         clientsInRoom.values().forEach(spInRoom -> {
@@ -523,18 +567,20 @@ public class GameRoom extends BaseGameRoom {
             checkCurrentPhase(drawer, Phase.IN_PROGRESS);
             checkCurrentPlayer(drawer.getClientId());
             checkIsReady(drawer);
+
             if (!drawer.isDrawer()){
                 drawer.sendMessage(drawer.getClientId(), "You are not this round's drawer");
+                return;
             }
             else if (!board.isValidCoordinate(x,y)){
                 drawer.sendMessage(drawer.getClientId(), "Coordinates out of canvas bounds");
-
+                return;
             }
-            else{
-                board.tryDraw(x, y, color); // try to draw drawer's request
-                relay(null, TextFX.colorize(String.format("%s is drawing on (%d,%d)", drawer.getDisplayName(), x,y), Color.BLUE));
-                sendCanvasUpdate(x,y,"black");
-            }
+            
+            board.tryDraw(x, y, color); // try to draw drawer's request
+            relay(null, TextFX.colorize(String.format("%s is drawing on (%d,%d)", drawer.getDisplayName(), x,y), Color.BLUE));
+            sendCanvasUpdate(x,y,"black");
+            
             LoggerUtil.INSTANCE.info(TextFX.colorize("Canvas: " + board, Color.PURPLE));
         } catch (NotReadyException e){
             // The check method already informs the currentUser
@@ -546,7 +592,10 @@ public class GameRoom extends BaseGameRoom {
             drawer.sendMessage(Constants.DEFAULT_CLIENT_ID,
                     "You can only play during the IN_PROGRESS phase");
             LoggerUtil.INSTANCE.severe("handleDraw exception", e);
-        } catch (Exception e) {
+        } catch (CoordNotFound e){ // redundant exception catch, isValidCoordinate() already checks, can remove later
+            LoggerUtil.INSTANCE.warning(TextFX.colorize("Coordinates out of canvas bounds", Color.RED));
+        } 
+        catch (Exception e) {
             LoggerUtil.INSTANCE.severe("handleDraw exception", e);
         }
 
@@ -559,6 +608,7 @@ public class GameRoom extends BaseGameRoom {
             //checks
             checkPlayerInRoom(player);
             checkCurrentPhase(player, Phase.IN_PROGRESS);
+            checkIsReady(player);
             if (correctGuessers.containsKey(player.getClientId())){
             player.sendMessage(player.getClientId(), "You already guessed correctly");
             }
@@ -570,7 +620,7 @@ public class GameRoom extends BaseGameRoom {
                 }
             }
             else {
-                relay(null, TextFX.colorize(String.format("%s guessed %s and it wasn't correct", player.getClientName(), guess), TextFX.Color.BLUE));
+                relay(null, TextFX.colorize(String.format("%s guessed [%s] and it wasn't correct", player.getClientName(), TextFX.colorize(guess, TextFX.Color.RED)), TextFX.Color.BLUE));
             }
         } catch (PlayerNotFoundException e) {
             player.sendMessage(Constants.DEFAULT_CLIENT_ID, "You must be in a GameRoom to play the game");
@@ -579,6 +629,10 @@ public class GameRoom extends BaseGameRoom {
             player.sendMessage(Constants.DEFAULT_CLIENT_ID,
                     "You can only play during the IN_PROGRESS phase");
             LoggerUtil.INSTANCE.severe("handleGuess exception", e);
+        }
+        catch (NotReadyException e){
+            // The check method already informs the currentUser
+            LoggerUtil.INSTANCE.severe("handleDraw exception", e);
         } catch (Exception e) {
             LoggerUtil.INSTANCE.severe("handleGuess exception", e);
         }

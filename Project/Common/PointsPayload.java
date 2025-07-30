@@ -14,6 +14,15 @@ public class PointsPayload extends Payload {
         this.playerPoints = playerPoints;
     }
 
+    /**
+     * @param scoreboard scoreboard to be reset
+     */
+    public void resetAllPoints(ConcurrentHashMap<String, Integer> scoreboard) {
+        for (ConcurrentHashMap.Entry<String, Integer> entry : scoreboard.entrySet()) {
+            entry.setValue(0);
+        }
+    }
+
     @Override
     public String toString(){
         StringJoiner joiner = new StringJoiner(", ");

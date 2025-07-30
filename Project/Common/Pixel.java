@@ -14,12 +14,21 @@ public class Pixel{
         this.color="-";  //placeholder for white, "+"" would be colors
     }
 
+    // basically color setter
     public void tryDraw(TextFX.Color color){
         this.color=TextFX.colorize("+", color);
     }
 
     public String getColor(){
         return this.color;
+    }
+
+    public int getX(){
+        return this.x;
+    }
+
+    public int getY(){
+        return this.y;
     }
 
      @Override
