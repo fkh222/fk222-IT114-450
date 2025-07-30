@@ -22,6 +22,7 @@ import Project.Common.Payload;
 import Project.Common.PayloadType;
 import Project.Common.Phase;
 import Project.Common.Pixel;
+import Project.Common.PointsPayload;
 import Project.Common.ReadyPayload;
 import Project.Common.RoomAction;
 import Project.Common.RoomResultPayload;
@@ -57,6 +58,7 @@ public enum Client {
     private User myUser = new User();
     private Phase currentPhase = Phase.READY;
     private Grid board = new Grid();
+    private ConcurrentHashMap<String, Integer> scoreboard = new ConcurrentHashMap<String, Integer>();
 
     private void error(String message) {
         LoggerUtil.INSTANCE.severe(TextFX.colorize(String.format("%s", message), Color.RED));
@@ -492,6 +494,12 @@ public enum Client {
             case PayloadType.DRAW:
                 processCanvasUpdate(payload);
                 break;
+            case PayloadType.SYNC_POINTS:
+                processPointsStatus(payload);
+                break;
+            case PayloadType.CLEAR_BOARD:
+                processClearBoard(payload);
+                break;
             default:
                 LoggerUtil.INSTANCE.warning(TextFX.colorize("Unhandled payload type", Color.YELLOW));
                 break;
@@ -503,7 +511,7 @@ public enum Client {
 
     private void processCanvasUpdate(Payload payload){
          if (!(payload instanceof CoordPayload)) {
-            error("Invalid payload subclass for processTurn");
+            error("Invalid payload subclass for processCanvasUpdate");
             return;
         }
         CoordPayload cp = (CoordPayload) payload;
@@ -519,6 +527,37 @@ public enum Client {
         pixel.tryDraw(TextFX.Color.BLACK);
         LoggerUtil.INSTANCE.info("Updated Canvas: " + board.toString());
 
+    }
+
+    private void processClearBoard(Payload payload){
+        this.board.reset();
+        this.board.generate(8,8,false);
+        LoggerUtil.INSTANCE.info("Cleaning Canvas . . . ");
+    }
+
+    private void processPointsStatus(Payload payload){
+        if (!(payload instanceof PointsPayload)) {
+            error("Invalid payload subclass for processPointsStatus");
+            return;
+        }
+        PointsPayload pp = (PointsPayload) payload;
+        // update client's scoreboard list and loggerutil it
+        ConcurrentHashMap<String, Integer> updatedPoints = pp.getPlayerPoints(); // assuming this is a map of username -> points
+
+        if (updatedPoints == null) {
+            error("Received null scoreboard");
+            return;
+        }
+
+        scoreboard.clear(); // clear current scoreboard
+        scoreboard.putAll(updatedPoints); // update with the new one
+
+        LoggerUtil.INSTANCE.info("This round's Scoreboard:");
+        updatedPoints.entrySet().stream()
+            .sorted(ConcurrentHashMap.Entry.<String, Integer>comparingByValue().reversed())
+            .forEach(entry ->
+            LoggerUtil.INSTANCE.info(String.format("Player: %s | Points: %d", entry.getKey(), entry.getValue()))
+        );
     }
 
     private void processResetTurn() {
@@ -559,10 +598,13 @@ public enum Client {
             board.reset();
         } else if (currentPhase == Phase.IN_PROGRESS) {
             // switched from ready to in-progress, init local grid
-            if (!myUser.isReady()){
+            /** if (!myUser.isReady()){
                 
-            }
+            } */
             board.generate(8,8, false);
+            knownClients.values().forEach(spInRoom -> {
+                scoreboard.put(spInRoom.getClientName(), 0);
+            });
         }
     }
 

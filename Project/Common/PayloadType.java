@@ -29,5 +29,6 @@ public enum PayloadType {
        POINTS, // track points of users
        SYNC_POINTS,
        GUESS,
+       CLEAR_BOARD,
 
 }

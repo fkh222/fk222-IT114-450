@@ -40,7 +40,9 @@ public class GameRoom extends BaseGameRoom {
     private ServerThread currentDrawer; // selected drawer of the round
     private List<String> wordList = new ArrayList<>(); // word list
     private String chosenWord = "";
-    protected final ConcurrentHashMap<Long, ServerThread> correctGuessers = new ConcurrentHashMap<Long, ServerThread>(); // list to store correct guessers each round
+    protected ConcurrentHashMap<Long, ServerThread> correctGuessers = new ConcurrentHashMap<Long, ServerThread>(); // list to store correct guessers each round
+    private ConcurrentHashMap<ServerThread, Integer> scoreboard = new ConcurrentHashMap<ServerThread, Integer>();
+    private int numRounds=0;
 
 
     public GameRoom(String name) {
@@ -121,6 +123,12 @@ public class GameRoom extends BaseGameRoom {
     private String maskWord(String word) {
         return word.replaceAll("[A-Za-z]", "_");
     }
+    // initialize the scoreboard 
+    private void initializeScoreboard(){
+        clientsInRoom.values().forEach(spInRoom ->{
+            scoreboard.put(spInRoom, 0);
+        });
+    }
 
     // end timer handlers
 
@@ -133,11 +141,12 @@ public class GameRoom extends BaseGameRoom {
         changePhase(Phase.IN_PROGRESS);
         currentTurnClientId = Constants.DEFAULT_CLIENT_ID;
         setTurnOrder();
+        numRounds=turnOrder.size();
         round = 0;
-        // sync board dimensions with clients
-        board.generate(8, 8, true);
+        // initialize board dimensions
+        board.generate(8, 8, true); 
         // TODO: sync the board to clients
-
+        initializeScoreboard();  // initialize scoreboard
         // load in word list
         loadWordList();
         LoggerUtil.INSTANCE.info(TextFX.colorize("Drawing Board generated: " + board, Color.PURPLE));
@@ -228,7 +237,7 @@ public class GameRoom extends BaseGameRoom {
     protected void onRoundEnd() {
         LoggerUtil.INSTANCE.info("onRoundEnd() start");
         resetRoundTimer(); // reset timer if round ended without the time expiring
-        
+        currentDrawer.setDrawer(false);
         // add points to round's correct guessers
         int maxPoints = 10;
         int numCorrect = correctGuessers.size();
@@ -238,14 +247,22 @@ public class GameRoom extends BaseGameRoom {
         for (ServerThread guesser : correctGuessers.values()) {
             guesser.setClientPoints(currentPoints);
             currentPoints = Math.max(1, currentPoints - 1);
+            scoreboard.replace(guesser, guesser.getClientPoints()); // update the server-held scoreboard
+            // sync points to all clients
         }
+
+        // sync and print round's updated scoreboard
+        syncPointsStatus(scoreboard); 
 
         // clear board and the correct guessers hashmap
         board.reset();
+        board.generate(8, 8, true);
         correctGuessers.clear();
+        // sync cleared board to players
+        syncClearBoard();
 
         LoggerUtil.INSTANCE.info("onRoundEnd() end");
-        if (round >= clientsInRoom.size()) {
+        if (round >= numRounds) {
             onSessionEnd();
         } else {
             onRoundStart();
@@ -256,11 +273,37 @@ public class GameRoom extends BaseGameRoom {
     @Override
     protected void onSessionEnd() {
         LoggerUtil.INSTANCE.info("onSessionEnd() start");
+
+        // simplify server's scoreboard for printing on client side
+        ConcurrentHashMap<String, Integer> simpleScoreboard = new ConcurrentHashMap<>();
+        for (ConcurrentHashMap.Entry<ServerThread, Integer> entry : scoreboard.entrySet()) {
+            simpleScoreboard.put(entry.getKey().getClientName(), entry.getValue());
+        }
+
+        StringBuilder scoreboardMessage = new StringBuilder("GAME OVER! Final scoreboard:\n");
+        simpleScoreboard.entrySet().stream()
+            .sorted(ConcurrentHashMap.Entry.<String, Integer>comparingByValue().reversed())
+            .forEach(entry -> scoreboardMessage.append(
+            String.format("Player: %s | Points: %d\n", entry.getKey(), entry.getValue())
+        ));
+
+        // relay final scoreboard and game over sign
+        relay(null, scoreboardMessage.toString().trim());
+
+        // general project specific session end logic
+        board.reset();
+        syncClearBoard(); // reset and sync cleared board
+        for (ServerThread player : clientsInRoom.values()) {
+            player.setClientPoints(0);
+        } // change all client's points back to 0
+
+        // other general session end logic
         turnOrder.clear();
         currentTurnClientId = Constants.DEFAULT_CLIENT_ID;
         resetReadyStatus();
         resetTurnStatus();
         changePhase(Phase.READY);
+        
         LoggerUtil.INSTANCE.info("onSessionEnd() end");
     }
     // end lifecycle methods
@@ -277,6 +320,26 @@ public class GameRoom extends BaseGameRoom {
         });
     }
 
+    // sync overall board to clients
+
+    private void syncClearBoard(){
+        clientsInRoom.values().forEach(spInRoom -> {
+            boolean failedToSend = !spInRoom.syncClearBoard();
+            if (failedToSend) {
+                removeClient(spInRoom);
+            }
+        });
+    }
+
+    // sync points data to all clients
+    private void syncPointsStatus(ConcurrentHashMap<ServerThread, Integer> scoreBoard){
+         clientsInRoom.values().forEach(spInRoom -> {
+            boolean failedToSend = !spInRoom.syncPointsStatus(scoreBoard);
+            if (failedToSend) {
+                removeClient(spInRoom);
+            }
+        });
+    }
 
     private void sendResetTurnStatus() {
         clientsInRoom.values().forEach(spInRoom -> {
@@ -496,19 +559,18 @@ public class GameRoom extends BaseGameRoom {
             //checks
             checkPlayerInRoom(player);
             checkCurrentPhase(player, Phase.IN_PROGRESS);
-            checkCurrentPlayer(player.getClientId());
             if (correctGuessers.containsKey(player.getClientId())){
             player.sendMessage(player.getClientId(), "You already guessed correctly");
             }
             else if (guess.toLowerCase().equals(chosenWord)){
                 correctGuessers.put(player.getClientId(), player);
-                relay(null, TextFX.colorize(String.format("$s guessed correctly", player.getClientName()), TextFX.Color.GREEN));
+                relay(null, TextFX.colorize(String.format("%s guessed correctly", player.getClientName()), TextFX.Color.GREEN));
                 if (correctGuessers.size()==(clientsInRoom.size()-1)){ // checks if all players guessed correctly aside from drawer
                     onRoundEnd();
                 }
             }
             else {
-                relay(null, TextFX.colorize(String.format("$s guessed $s and it wasn't correct", player.getClientName(), guess), TextFX.Color.BLUE));
+                relay(null, TextFX.colorize(String.format("%s guessed %s and it wasn't correct", player.getClientName(), guess), TextFX.Color.BLUE));
             }
         } catch (PlayerNotFoundException e) {
             player.sendMessage(Constants.DEFAULT_CLIENT_ID, "You must be in a GameRoom to play the game");

@@ -1,14 +1,27 @@
 package Project.Common;
 
-public class PointsPayload extends Payload {
-    private int points = 0;
+import java.util.StringJoiner;
+import java.util.concurrent.ConcurrentHashMap;
 
-    public PointsPayload(long clientId, int points){
-        setPayloadType(PayloadType.POINTS);
+public class PointsPayload extends Payload {
+    private ConcurrentHashMap<String, Integer> playerPoints;
+
+    public ConcurrentHashMap<String, Integer> getPlayerPoints() {
+        return playerPoints;
     }
+
+    public void setPlayerPoints(ConcurrentHashMap<String, Integer> playerPoints) {
+        this.playerPoints = playerPoints;
+    }
+
     @Override
-    public String toString() {
-        return super.toString() + toString().format("Client Id [%s] Points: %d",
-            getClientId(), points);
+    public String toString(){
+        StringJoiner joiner = new StringJoiner(", ");
+        if (playerPoints != null) {
+        for (ConcurrentHashMap.Entry<String, Integer> entry : playerPoints.entrySet()) {
+            joiner.add(entry.getKey() + "=" + entry.getValue());
+            }
+        }
+        return String.format("PointsPayload Scoreboard: {%s}", joiner.toString());
     }
 }

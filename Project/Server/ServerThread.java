@@ -7,6 +7,7 @@ import Project.Common.LoggerUtil;
 import Project.Common.Payload;
 import Project.Common.PayloadType;
 import Project.Common.Phase;
+import Project.Common.PointsPayload;
 import Project.Common.ReadyPayload;
 import Project.Common.RoomAction;
 import Project.Common.RoomResultPayload;
@@ -15,6 +16,7 @@ import Project.Common.TextFX.Color;
 import java.net.Socket;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 /**
@@ -61,6 +63,23 @@ public class ServerThread extends BaseServerThread {
         // TODO: send updated canvas/board to other players as a payload message - client will process this
         CoordPayload payload = new CoordPayload(x,y,color);
         payload.setPayloadType(PayloadType.DRAW);
+        return sendToClient(payload);
+    }
+
+    public boolean syncClearBoard(){
+        Payload payload = new Payload();
+        payload.setPayloadType(PayloadType.CLEAR_BOARD);
+        return sendToClient(payload);
+    }
+
+    public boolean syncPointsStatus(ConcurrentHashMap<ServerThread, Integer> scoreBoard){
+        ConcurrentHashMap<String, Integer> simpleScoreboard = new ConcurrentHashMap<>();
+        for (ConcurrentHashMap.Entry<ServerThread, Integer> entry : scoreBoard.entrySet()) {
+            simpleScoreboard.put(entry.getKey().getClientName(), entry.getValue());
+        } // converts User,Integer hashmap to a simpler one for sending to client side
+        PointsPayload payload = new PointsPayload();
+        payload.setPayloadType(PayloadType.SYNC_POINTS);
+        payload.setPlayerPoints(simpleScoreboard);
         return sendToClient(payload);
     }
 
