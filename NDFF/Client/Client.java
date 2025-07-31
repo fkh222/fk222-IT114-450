@@ -1,6 +1,5 @@
-package Project.Client;
+package NDFF.Client;
 
-import Project.Common.CoordPayload;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -13,23 +12,23 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import Project.Common.Grid;
-import Project.Common.Command;
-import Project.Common.ConnectionPayload;
-import Project.Common.Constants;
-import Project.Common.LoggerUtil;
-import Project.Common.Payload;
-import Project.Common.PayloadType;
-import Project.Common.Phase;
-import Project.Common.Pixel;
-import Project.Common.PointsPayload;
-import Project.Common.ReadyPayload;
-import Project.Common.RoomAction;
-import Project.Common.RoomResultPayload;
-import Project.Common.TextFX;
-import Project.Common.User;
-import Project.Common.TextFX.Color;
-import Project.Exceptions.CoordNotFound;
+import NDFF.Common.Cell;
+import NDFF.Common.Command;
+import NDFF.Common.Constants;
+import NDFF.Common.Grid;
+import NDFF.Common.LoggerUtil;
+import NDFF.Common.Phase;
+import NDFF.Common.RoomAction;
+import NDFF.Common.TextFX;
+import NDFF.Common.User;
+import NDFF.Common.Payloads.ConnectionPayload;
+import NDFF.Common.Payloads.CoordPayload;
+import NDFF.Common.Payloads.FishPayload;
+import NDFF.Common.Payloads.Payload;
+import NDFF.Common.Payloads.PayloadType;
+import NDFF.Common.Payloads.ReadyPayload;
+import NDFF.Common.Payloads.RoomResultPayload;
+import NDFF.Common.TextFX.Color;
 
 /**
  * Demoing bi-directional communication between client and server in a
@@ -57,8 +56,7 @@ public enum Client {
     private final ConcurrentHashMap<Long, User> knownClients = new ConcurrentHashMap<Long, User>();
     private User myUser = new User();
     private Phase currentPhase = Phase.READY;
-    private Grid board = new Grid(); // fk222 7/30/25 CLIENT SIDE BOARD REFERENCE
-    private ConcurrentHashMap<String, Integer> scoreboard = new ConcurrentHashMap<String, Integer>();
+    private Grid grid = new Grid();
 
     private void error(String message) {
         LoggerUtil.INSTANCE.severe(TextFX.colorize(String.format("%s", message), Color.RED));
@@ -170,11 +168,12 @@ public enum Client {
                 String message = TextFX.colorize("Known clients:\n", Color.CYAN);
                 LoggerUtil.INSTANCE.info(TextFX.colorize("Known clients:", Color.CYAN));
                 message += String.join("\n", knownClients.values().stream()
-                        .map(c -> String.format("%s %s %s %s",
+                        .map(c -> String.format("%s %s %s %s %s",
                                 c.getDisplayName(),
                                 c.getClientId() == myUser.getClientId() ? " (you)" : "",
                                 c.isReady() ? "[x]" : "[ ]",
-                                c.didTakeTurn() ? "[T]" : "[ ]"))
+                                c.didTakeTurn() ? "[T]" : "[ ]",
+                                c.getPoints()))
                         .toList());
                 LoggerUtil.INSTANCE.info(message);
                 wasCommand = true;
@@ -224,56 +223,50 @@ public enum Client {
 
                 sendDoTurn(text);
                 wasCommand = true;
-            } else if (text.startsWith(Command.DRAW.command)){ // project specific commands start here
-                text = text.replace(Command.DRAW.command, "").trim();
-                /**if (!myUser.isDrawer()){  //checks if client is the round's drawer
+            } else if (text.startsWith(Command.CAST.command)) {
+                // Note: This is just an example command, you can replace it with your own logic
+                text = text.replace(Command.CAST.command, "").trim();
+                if (text == null || text.length() == 0) {
                     LoggerUtil.INSTANCE
-                            .warning(TextFX.colorize("You are not this round's drawer", Color.RED));
+                            .warning(TextFX.colorize("This command requires a cast message as an argument", Color.RED));
                     return true;
                 }
-                */
-                String[] coordinates = text.split(",");
-                if (coordinates.length!=2){
-                    LoggerUtil.INSTANCE
-                            .warning(TextFX.colorize("The draw command requires 2 integer coordinates X and Y: /draw <x>,<y>", Color.RED));
+                String[] coords = text.split(",");
+                if (coords.length != 2) {
+                    LoggerUtil.INSTANCE.warning(TextFX.colorize("Usage: /cast <x>,<y>", Color.RED));
                     return true;
                 }
                 try {
-                    int x = Integer.parseInt(coordinates[0].trim());
-                    int y = Integer.parseInt(coordinates[1].trim());
-                    String color = "Black";
-                    if (board.isValidCoordinate(x, y)){
-                         // checks if coord is valid or already drawn
-                        if (!board.getPixel(x, y).isAlreadyDrawn()){
-                            LoggerUtil.INSTANCE
-                                .info(TextFX.colorize(String.format("Drawing on (%d, %d)", x, y), Color.GREEN));
-                            sendDraw(x, y, color);
-                        }
-                    }
-                    else{
-                        LoggerUtil.INSTANCE.warning(TextFX.colorize("Coordinates out of canvas bounds or already drawn", Color.RED));
+                    int x = Integer.parseInt(coords[0].trim());
+                    int y = Integer.parseInt(coords[1].trim());
+                    // check if coordinates are within bounds
+                    if (grid.isValidCoordinate(x, y)) {
+                        LoggerUtil.INSTANCE
+                                .info(TextFX.colorize(String.format("Casting at (%d, %d)", x, y), Color.GREEN));
+                        sendCast(x, y);
+                    } else {
+                        LoggerUtil.INSTANCE.warning(TextFX.colorize("Coordinates out of bounds", Color.RED));
                     }
                 } catch (NumberFormatException e) {
                     LoggerUtil.INSTANCE
-                            .warning(TextFX.colorize("The draw command requires 2 integer coordinates X and Y: /draw <x>,<y>", Color.RED));
+                            .warning(TextFX.colorize("Coordinates must be integers. Usage: /cast <x>,<y>", Color.RED));
                     return true;
                 }
-                wasCommand = true; // fk222 7/30/25
-            } else if (text.startsWith(Command.GUESS.command)){
-                text = text.replace(Command.GUESS.command, "").trim();
-                if (text==null){
-                    LoggerUtil.INSTANCE
-                            .warning(TextFX.colorize("The guess command requires at least one word", Color.RED));
-                }
-                sendGuess(text);
-                wasCommand=true; 
-            } // fk222 7/30/25
-
+                wasCommand = true;
+            } else {
+                LoggerUtil.INSTANCE.warning(TextFX.colorize("Unknown command: " + text, Color.RED));
+            }
         }
         return wasCommand;
     }
 
     // Start Send*() methods
+    private void sendCast(int x, int y) throws IOException {
+        CoordPayload cp = new CoordPayload(x, y);
+        cp.setPayloadType(PayloadType.CAST);
+        sendToServer(cp);
+    }
+
     private void sendDoTurn(String text) throws IOException {
         // NOTE for now using ReadyPayload as it has the necessary properties
         // An actual turn may include other data for your project
@@ -292,8 +285,7 @@ public enum Client {
      */
     private void sendReady() throws IOException {
         ReadyPayload rp = new ReadyPayload();
-        // rp.setReady(true); // <- technically not needed as we'll use the payload type
-        // as a trigger
+        rp.setReady(true); // <- technically not needed as we'll use the payload type as a trigger
         sendToServer(rp);
     }
 
@@ -387,19 +379,6 @@ public enum Client {
                     "Not connected to server (hint: type `/connect host:port` without the quotes and replace host/port with the necessary info)");
         }
     }
-
-    private void sendGuess(String guess) throws IOException {
-        Payload payload = new Payload();
-        payload.setPayloadType(PayloadType.GUESS);
-        payload.setMessage(guess);
-        sendToServer(payload);
-    } // fk222 7/30/25
-
-    private void sendDraw(int x, int y, String color) throws IOException {
-        CoordPayload payload = new CoordPayload(x,y,color);
-        payload.setPayloadType(PayloadType.DRAW);
-        sendToServer(payload);
-    } // fk222 7/30/25
     // End Send*() methods
 
     public void start() throws IOException {
@@ -436,7 +415,7 @@ public enum Client {
                 e.printStackTrace();
             }
         } catch (Exception e) {
-            LoggerUtil.INSTANCE.severe("Unexpected error in listenToServer()", e);
+            LoggerUtil.INSTANCE.severe("Unexpected error in listenToServer", e);
         } finally {
             closeServerConnection();
         }
@@ -444,6 +423,7 @@ public enum Client {
     }
 
     private void processPayload(Payload payload) {
+        LoggerUtil.INSTANCE.info(TextFX.colorize(String.format("Received payload: %s", payload), Color.CYAN));
         switch (payload.getPayloadType()) {
             case CLIENT_CONNECT:// unused
                 break;
@@ -494,17 +474,8 @@ public enum Client {
                 // note no data necessary as this is just a trigger
                 processResetTurn();
                 break;
-            case PayloadType.DRAW: //fk222 7/30/25
-                processCanvasUpdate(payload);
-                break;
-            case PayloadType.SYNC_POINTS: //fk222 7/30/25
-                processPointsStatus(payload);
-                break;
-            case PayloadType.CLEAR_BOARD:
-                processClearBoard(payload);
-                break;
-            case PayloadType.SYNC_BOARD:
-                processSyncBoard(payload);
+            case PayloadType.FISH:
+                processFishResult(payload);
                 break;
             default:
                 LoggerUtil.INSTANCE.warning(TextFX.colorize("Unhandled payload type", Color.YELLOW));
@@ -514,92 +485,51 @@ public enum Client {
     }
 
     // Start process*() methods
-
-
-    // update canvas/board updates to client
-    private void processCanvasUpdate(Payload payload){
-         if (!(payload instanceof CoordPayload)) {
-            error("Invalid payload subclass for processCanvasUpdate");
+    private void processFishResult(Payload payload) {
+        if (!(payload instanceof FishPayload)) {
+            error("Invalid payload subclass for processFishResult");
             return;
         }
-        CoordPayload cp = (CoordPayload) payload;
-        if (!board.isValidCoordinate(cp.getX(), cp.getY())){
-            LoggerUtil.INSTANCE.warning("Coordinates out of canvas bounds");
+        FishPayload fp = (FishPayload) payload;
+        // use -1 clientId for reset
+        if (fp.getClientId() == Constants.DEFAULT_CLIENT_ID) {
+            // reset all fish counts
+            knownClients.values().forEach(cp -> cp.resetFish());
+            System.out.println("Fish counts reset for everyone");
             return;
         }
-        Pixel pixel = board.getPixel(cp.getX(), cp.getY());
-        if (pixel == null){
-            LoggerUtil.INSTANCE.warning("Pixel not initialized");
+        // handle normal fish result
+        if (!knownClients.containsKey(fp.getClientId())) {
+            LoggerUtil.INSTANCE.severe(String.format("Received fish result for client id %s who is not known",
+                    fp.getClientId()));
             return;
         }
-        pixel.tryDraw(TextFX.Color.BLACK);
-        LoggerUtil.INSTANCE.info("Updated Canvas: " + board.toString());
+        User cp = knownClients.get(fp.getClientId());
+        // null fish type is used as a notification of an empty cell
+        if (fp.getFishQuantity() != null && fp.getFishQuantity().getFishType() != null) {
+            cp.addFish(fp.getFishQuantity().getFishType(), fp.getFishQuantity().getQuantity());
+        }
 
-    } //fk222 7/30/25
-
-    // clears client's board
-    private void processClearBoard(Payload payload){
-        this.board.reset();
-        this.board.generate(8,8,false);
-        LoggerUtil.INSTANCE.info("Cleaning Canvas . . . ");
-    }
-
-    // syncs board (specifically for newly joined users)
-    private void processSyncBoard(Payload payload){
-        // same logic as processSendCanvasUpdate but sync board quietly
-        if (!(payload instanceof CoordPayload)) {
-            error("Invalid payload subclass for processSyncBoard");
+        // update grid and display
+        // NOTE: Client-side shows known catches in the grid vs server-side that shows
+        // remaining fish
+        Cell cell = grid.getCell(fp.getX(), fp.getY());
+        if (cell == null) {
+            LoggerUtil.INSTANCE
+                    .warning(String.format("Cell at (%d, %d) is null, cannot set fish count", fp.getX(), fp.getY()));
             return;
         }
-        CoordPayload cp = (CoordPayload) payload;
-        if (!board.isValidCoordinate(cp.getX(), cp.getY())){
-            LoggerUtil.INSTANCE.warning("Coordinates out of canvas bounds");
-            return;
+        if (fp.getFishQuantity() == null || fp.getFishQuantity().getFishType() == null) {
+            cell.clearFish();
+        } else {
+            cell.changeFishCount(fp.getFishQuantity().getFishType(), fp.getFishQuantity().getQuantity());
         }
-        Pixel pixel = board.getPixel(cp.getX(), cp.getY());
-        if (pixel == null){
-            LoggerUtil.INSTANCE.warning("Pixel not initialized");
-            return;
-        }
-        // difference from processCanvasUpdate - only changes coord if the pixel sent from server is drawn and updates the client's board
-        if (!cp.getColor().equals("-")){
-            pixel.tryDraw(TextFX.Color.BLACK);
-        }
-    }
-
-
-    // sends points status from server to client's scoreboard
-    private void processPointsStatus(Payload payload){
-        if (!(payload instanceof PointsPayload)) {
-            error("Invalid payload subclass for processPointsStatus");
-            return;
-        }
-        PointsPayload pp = (PointsPayload) payload;
-        // update client's scoreboard list and loggerutil it
-        ConcurrentHashMap<String, Integer> updatedPoints = pp.getPlayerPoints(); // assuming this is a map of username -> points
-
-        if (updatedPoints == null) {
-            error("Received null scoreboard");
-            return;
-        } // fk222 7/30/25
-
-        scoreboard.clear(); // clear current scoreboard
-        scoreboard.putAll(updatedPoints); // update with the new one
-
-        LoggerUtil.INSTANCE.info("This round's Scoreboard:");
-
-        StringBuilder scoreboardMessage = new StringBuilder("This round's Scoreboard:\n");
-        updatedPoints.entrySet().stream()
-            .sorted(ConcurrentHashMap.Entry.<String, Integer>comparingByValue().reversed())
-            .forEach(entry -> scoreboardMessage.append(
-            String.format("Player: %s | Points: %d\n", entry.getKey(), entry.getValue())
-        ));
-        LoggerUtil.INSTANCE.info(scoreboardMessage);
+        LoggerUtil.INSTANCE.info(TextFX.colorize(String.format("Current grid: " + grid), Color.PURPLE));
     }
 
     private void processResetTurn() {
         knownClients.values().forEach(cp -> cp.setTookTurn(false));
-        System.out.println("Turn status reset for everyone");
+        System.out.println("Ready status turn for everyone");
     }
 
     private void processTurn(Payload payload) {
@@ -625,23 +555,18 @@ public enum Client {
     }
 
     private void processPhase(Payload payload) {
+
         currentPhase = Enum.valueOf(Phase.class, payload.getMessage());
         System.out.println(TextFX.colorize("Current phase is " + currentPhase.name(), Color.YELLOW));
         if (currentPhase == Phase.READY) {
             // treat this as a session reset
             knownClients.values().forEach(user -> {
-                myUser.resetSession();
+                user.resetSession();
             });
-            board.reset();
+            grid.reset();
         } else if (currentPhase == Phase.IN_PROGRESS) {
             // switched from ready to in-progress, init local grid
-            /** if (!myUser.isReady()){
-                
-            } */
-            board.generate(8,8, false);
-            knownClients.values().forEach(spInRoom -> {
-                scoreboard.put(spInRoom.getClientName(), 0);
-            });
+            grid.generate(5, 5, false);
         }
     }
 
@@ -685,7 +610,7 @@ public enum Client {
         }
         LoggerUtil.INSTANCE.info(TextFX.colorize("Room Results:", Color.PURPLE));
         LoggerUtil.INSTANCE.info(
-                String.join(System.lineSeparator(), rooms));
+                String.join("\n", rooms));
     }
 
     private void processClientData(Payload payload) {

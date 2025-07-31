@@ -1,4 +1,4 @@
-package Project.Common;
+package NDFF.Common;
 
 /**
  * Utility to attempt to provide colored text in the terminal.
@@ -68,6 +68,5 @@ public abstract class TextFX {
         System.out.println(TextFX.colorize("Hello, world!", Color.RED));
         System.out.println(TextFX.colorize("This is some blue text.", Color.BLUE));
         System.out.println(TextFX.colorize("And this is green!", Color.GREEN));
-        System.out.println(TextFX.colorize("And this is black!", Color.BLACK));
     }
 }

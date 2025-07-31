@@ -1,25 +1,25 @@
-package Project.Server;
+package NDFF.Server;
 
-import Project.Common.ConnectionPayload;
-import Project.Common.Constants;
-import Project.Common.CoordPayload;
-import Project.Common.Grid;
-import Project.Common.LoggerUtil;
-import Project.Common.Payload;
-import Project.Common.PayloadType;
-import Project.Common.Phase;
-import Project.Common.Pixel;
-import Project.Common.PointsPayload;
-import Project.Common.ReadyPayload;
-import Project.Common.RoomAction;
-import Project.Common.RoomResultPayload;
-import Project.Common.TextFX;
-import Project.Common.TextFX.Color;
 import java.net.Socket;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
+
+import NDFF.Common.Constants;
+import NDFF.Common.CatchData;
+import NDFF.Common.FishType;
+import NDFF.Common.LoggerUtil;
+import NDFF.Common.Phase;
+import NDFF.Common.RoomAction;
+import NDFF.Common.TextFX;
+import NDFF.Common.Payloads.ConnectionPayload;
+import NDFF.Common.Payloads.CoordPayload;
+import NDFF.Common.Payloads.FishPayload;
+import NDFF.Common.Payloads.Payload;
+import NDFF.Common.Payloads.PayloadType;
+import NDFF.Common.Payloads.ReadyPayload;
+import NDFF.Common.Payloads.RoomResultPayload;
+import NDFF.Common.TextFX.Color;
 
 /**
  * A server-side representation of a single client
@@ -33,7 +33,6 @@ public class ServerThread extends BaseServerThread {
      * 
      * @param message
      */
-    @Override
     protected void info(String message) {
         LoggerUtil.INSTANCE
                 .info(TextFX.colorize(String.format("Thread[%s]: %s", this.getClientId(), message), Color.CYAN));
@@ -61,45 +60,11 @@ public class ServerThread extends BaseServerThread {
 
     // Start Send*() Methods
 
-    public boolean sendCanvasUpdate(int x, int y, String color){
-        // TODO: send updated canvas/board to other players as a payload message - client will process this
-        CoordPayload payload = new CoordPayload(x,y,color);
-        payload.setPayloadType(PayloadType.DRAW);
-        return sendToClient(payload);
-    } //fk222 7/30/25
-
-
-    public boolean sendBoardStatus(long clientId, Grid board) {
-        boolean success = true;
-        for (Pixel[] pixels : board.getGrid()) { // each row of board
-            for (Pixel pixel : pixels){ // each individual pixel
-                CoordPayload payload = new CoordPayload(pixel.getX(), pixel.getY(), pixel.getColor());
-                payload.setPayloadType(PayloadType.SYNC_BOARD);
-                boolean sent = sendToClient(payload);
-                if (!sent) {
-                    success = false; // Track if any send payload failed
-                }
-            }
-        }
-        return success;
+    public boolean sendCaughtFishUpdate(long clientId, int x, int y, CatchData caughtFish) {
+        FishPayload fp = new FishPayload(x, y, caughtFish);
+        fp.setClientId(clientId);
+        return sendToClient(fp);
     }
-
-    public boolean syncClearBoard(){
-        Payload payload = new Payload();
-        payload.setPayloadType(PayloadType.CLEAR_BOARD);
-        return sendToClient(payload);
-    }
-
-    public boolean syncPointsStatus(ConcurrentHashMap<ServerThread, Integer> scoreBoard){
-        ConcurrentHashMap<String, Integer> simpleScoreboard = new ConcurrentHashMap<>();
-        for (ConcurrentHashMap.Entry<ServerThread, Integer> entry : scoreBoard.entrySet()) {
-            simpleScoreboard.put(entry.getKey().getClientName(), entry.getValue());
-        } // converts User,Integer hashmap to a simpler one for sending to client side
-        PointsPayload payload = new PointsPayload();
-        payload.setPayloadType(PayloadType.SYNC_POINTS);
-        payload.setPlayerPoints(simpleScoreboard);
-        return sendToClient(payload);
-    } // fk222 7/30/25
 
     public boolean sendResetTurnStatus() {
         ReadyPayload rp = new ReadyPayload();
@@ -233,7 +198,6 @@ public class ServerThread extends BaseServerThread {
     /**
      * Sends a message to the client
      * 
-     * @param clientId who it's from
      * @param message
      * @return true for successful send
      */
@@ -293,29 +257,13 @@ public class ServerThread extends BaseServerThread {
                     sendMessage(Constants.DEFAULT_CLIENT_ID, "You must be in a GameRoom to do a turn");
                 }
                 break;
-            case DRAW: //fk222 7/30/25
-                CoordPayload cp = (CoordPayload) incoming;
+            case CAST:
                 try {
-                    if (!this.isDrawer()){ // checks again if this serverthread/user is the round's drawer
-                        sendMessage(this.getClientId(), "You are not this round's drawer");
-                    }   
-                    else {
-                        ((GameRoom) currentRoom).handleDraw(this, cp.getX(), cp.getY(), TextFX.Color.BLACK);
-                        } // else, handleDraw() in gameroom
+                    // cast to GameRoom as the subclass will handle all Game logic
+                    CoordPayload cp = (CoordPayload) incoming;
+                    ((GameRoom) currentRoom).handleCastAction(this, cp.getX(), cp.getY());
                 } catch (Exception e) {
-                    sendMessage(Constants.DEFAULT_CLIENT_ID, "You must be in a GameRoom to play");
-                }
-                break;
-            case GUESS: // fk222 7/30/25
-                Payload payload = incoming;
-                try {
-                    if (this.isDrawer()){
-                        sendMessage(this.getClientId(), "Drawer cannot guess in this round");
-                    }
-                    else {
-                        ((GameRoom) currentRoom).handleGuess(this, payload.getMessage());
-                    }
-                } catch (Exception e) {
+                    sendMessage(Constants.DEFAULT_CLIENT_ID, "You must be in a GameRoom to do a cast");
                 }
                 break;
             default:
@@ -340,20 +288,13 @@ public class ServerThread extends BaseServerThread {
     protected void setTookTurn(boolean tookTurn) {
         this.user.setTookTurn(tookTurn);
     }
-    //sets drawer status and checks if drawer of that round
-    protected void setDrawer(boolean roundDrawer){
-        this.user.setDrawer(roundDrawer);
-    }
-    protected boolean isDrawer(){
-        return this.user.isDrawer();
+
+    protected void addFish(FishType fishType, int quantity) {
+        this.user.addFish(fishType, quantity);
     }
 
-    // gets and sets user's points
-    protected int getClientPoints(){
-        return this.user.getClientPoints();
-    }
-    protected void setClientPoints(int points){
-        this.user.setClientPoints(points);
+    protected int getPoints() {
+        return this.user.getPoints();
     }
 
     @Override
