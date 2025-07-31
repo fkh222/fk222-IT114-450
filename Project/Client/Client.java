@@ -57,7 +57,7 @@ public enum Client {
     private final ConcurrentHashMap<Long, User> knownClients = new ConcurrentHashMap<Long, User>();
     private User myUser = new User();
     private Phase currentPhase = Phase.READY;
-    private Grid board = new Grid();
+    private Grid board = new Grid(); // fk222 7/30/25 CLIENT SIDE BOARD REFERENCE
     private ConcurrentHashMap<String, Integer> scoreboard = new ConcurrentHashMap<String, Integer>();
 
     private void error(String message) {
@@ -258,7 +258,7 @@ public enum Client {
                             .warning(TextFX.colorize("The draw command requires 2 integer coordinates X and Y: /draw <x>,<y>", Color.RED));
                     return true;
                 }
-                wasCommand = true;
+                wasCommand = true; // fk222 7/30/25
             } else if (text.startsWith(Command.GUESS.command)){
                 text = text.replace(Command.GUESS.command, "").trim();
                 if (text==null){
@@ -266,8 +266,8 @@ public enum Client {
                             .warning(TextFX.colorize("The guess command requires at least one word", Color.RED));
                 }
                 sendGuess(text);
-                wasCommand=true;
-            }
+                wasCommand=true; 
+            } // fk222 7/30/25
 
         }
         return wasCommand;
@@ -393,13 +393,13 @@ public enum Client {
         payload.setPayloadType(PayloadType.GUESS);
         payload.setMessage(guess);
         sendToServer(payload);
-    }
+    } // fk222 7/30/25
 
     private void sendDraw(int x, int y, String color) throws IOException {
         CoordPayload payload = new CoordPayload(x,y,color);
         payload.setPayloadType(PayloadType.DRAW);
         sendToServer(payload);
-    }
+    } // fk222 7/30/25
     // End Send*() methods
 
     public void start() throws IOException {
@@ -494,10 +494,10 @@ public enum Client {
                 // note no data necessary as this is just a trigger
                 processResetTurn();
                 break;
-            case PayloadType.DRAW:
+            case PayloadType.DRAW: //fk222 7/30/25
                 processCanvasUpdate(payload);
                 break;
-            case PayloadType.SYNC_POINTS:
+            case PayloadType.SYNC_POINTS: //fk222 7/30/25
                 processPointsStatus(payload);
                 break;
             case PayloadType.CLEAR_BOARD:
@@ -535,7 +535,7 @@ public enum Client {
         pixel.tryDraw(TextFX.Color.BLACK);
         LoggerUtil.INSTANCE.info("Updated Canvas: " + board.toString());
 
-    }
+    } //fk222 7/30/25
 
     // clears client's board
     private void processClearBoard(Payload payload){
@@ -581,7 +581,7 @@ public enum Client {
         if (updatedPoints == null) {
             error("Received null scoreboard");
             return;
-        }
+        } // fk222 7/30/25
 
         scoreboard.clear(); // clear current scoreboard
         scoreboard.putAll(updatedPoints); // update with the new one

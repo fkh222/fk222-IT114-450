@@ -32,3 +32,9 @@ public class CoordPayload extends Payload {
                 ",color=" + color + "}";
     }
 }
+
+/**
+ * fk222 7/30/25
+ * CoordPayload is used to send/sync board updates between client and server side.
+ * it includes main method, getter+setters for x and y, a getter for coordinate's color, and toString
+ */

@@ -66,7 +66,7 @@ public class ServerThread extends BaseServerThread {
         CoordPayload payload = new CoordPayload(x,y,color);
         payload.setPayloadType(PayloadType.DRAW);
         return sendToClient(payload);
-    }
+    } //fk222 7/30/25
 
 
     public boolean sendBoardStatus(long clientId, Grid board) {
@@ -99,7 +99,7 @@ public class ServerThread extends BaseServerThread {
         payload.setPayloadType(PayloadType.SYNC_POINTS);
         payload.setPlayerPoints(simpleScoreboard);
         return sendToClient(payload);
-    }
+    } // fk222 7/30/25
 
     public boolean sendResetTurnStatus() {
         ReadyPayload rp = new ReadyPayload();
@@ -293,7 +293,7 @@ public class ServerThread extends BaseServerThread {
                     sendMessage(Constants.DEFAULT_CLIENT_ID, "You must be in a GameRoom to do a turn");
                 }
                 break;
-            case DRAW:
+            case DRAW: //fk222 7/30/25
                 CoordPayload cp = (CoordPayload) incoming;
                 try {
                     if (!this.isDrawer()){ // checks again if this serverthread/user is the round's drawer
@@ -306,7 +306,7 @@ public class ServerThread extends BaseServerThread {
                     sendMessage(Constants.DEFAULT_CLIENT_ID, "You must be in a GameRoom to play");
                 }
                 break;
-            case GUESS:
+            case GUESS: // fk222 7/30/25
                 Payload payload = incoming;
                 try {
                     if (this.isDrawer()){

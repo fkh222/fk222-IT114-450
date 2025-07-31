@@ -34,3 +34,7 @@ public class PointsPayload extends Payload {
         return String.format("PointsPayload Scoreboard: {%s}", joiner.toString());
     }
 }
+/**
+ * fk222 7/30/25
+ * PointsPayload is used for syncing the scoreboard of players' points between the client and server side. It includes getter+setter, reset points, and toString() method
+ */

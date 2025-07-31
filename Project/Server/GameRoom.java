@@ -38,7 +38,7 @@ public class GameRoom extends BaseGameRoom {
     private int round = 0;
 
     // Project specifics
-    private Grid board = new Grid(); // generated in onSessionStart()
+    private Grid board = new Grid(); // generated in onSessionStart() // fk222 7/30/25 
     private ServerThread currentDrawer; // selected drawer of the round
     private List<String> wordList = new ArrayList<>(); // word list
     private String chosenWord = "";
@@ -63,7 +63,7 @@ public class GameRoom extends BaseGameRoom {
             sendBoardStatus(sp, board);
         }
         
-    }
+    } // fk222 7/30/25
 
     /** {@inheritDoc} */
     @Override
@@ -78,12 +78,12 @@ public class GameRoom extends BaseGameRoom {
             resetTurnTimer();
             resetRoundTimer();
             onSessionEnd();
-        } else if (removedClient == currentTurnClientId) {
-            onTurnStart();
+        } else if (removedClient == currentDrawer.getClientId()) {
+            onRoundEnd();
         }
-    }
+    } // fk222 7/30/25
 
-    // timer handlers
+    // timer handlersf
     private void startRoundTimer() {
         roundTimer = new TimedEvent(60, () -> onRoundEnd());
         roundTimer.setTickCallback((time) -> System.out.println("Round Time: " + time));
@@ -159,7 +159,7 @@ public class GameRoom extends BaseGameRoom {
         LoggerUtil.INSTANCE.info(TextFX.colorize("Drawing Board generated: " + board, Color.PURPLE));
         LoggerUtil.INSTANCE.info("onSessionStart() end");
         onRoundStart();
-    }
+    } //fk222 7/30/25
 
     /** {@inheritDoc} */
     @Override
@@ -196,7 +196,7 @@ public class GameRoom extends BaseGameRoom {
         relay(null, board.toString());
         startRoundTimer(); // 60 seconds per round, unless all guessers win before timer ends
         LoggerUtil.INSTANCE.info("onRoundStart() end");
-    }
+    } //fk222 7/30/25
 
     // turns are generally unused for this drawing game
     /** {@inheritDoc} */
@@ -280,10 +280,6 @@ public class GameRoom extends BaseGameRoom {
             String.format("Player: %s | Points: %d\n", entry.getKey(), entry.getValue())
         ));
         relay(null, scoreboardMessage.toString().trim());
-
-
-
-
         // clear board and the correct guessers hashmap
         board.reset();
         board.generate(8, 8, true);
@@ -297,7 +293,7 @@ public class GameRoom extends BaseGameRoom {
         } else {
             onRoundStart();
         }
-    }
+    } // fk222 7/30/25
 
     /** {@inheritDoc} */
     @Override
@@ -340,7 +336,7 @@ public class GameRoom extends BaseGameRoom {
         changePhase(Phase.READY);
         
         LoggerUtil.INSTANCE.info("onSessionEnd() end");
-    }
+    } // fk222 7/30/25
     // end lifecycle methods
 
     // send/sync data to ServerThread(s)
@@ -353,7 +349,7 @@ public class GameRoom extends BaseGameRoom {
                 removeClient(spInRoom);
             }
         });
-    }
+    } //fk222 7/30/25
 
     // send board status to new clients
     private void sendBoardStatus(ServerThread client, Grid board){
@@ -598,9 +594,7 @@ public class GameRoom extends BaseGameRoom {
         catch (Exception e) {
             LoggerUtil.INSTANCE.severe("handleDraw exception", e);
         }
-
-
-    }
+    } //fk222 7/30/25
     // handle GUESS action (sent from ServerThread)
     public void handleGuess(ServerThread player, String guess){
         //TODO: gameroom handles guess action - compare guess to chosen word, evaluate points, send back to client and sync points

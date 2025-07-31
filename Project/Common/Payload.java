@@ -54,3 +54,7 @@ public class Payload implements Serializable {
         return String.format("Payload[%s] Client Id [%s] Message: [%s]", getPayloadType(), getClientId(), getMessage());
     }
 }
+/**
+ * fk222 7/30/25
+ * Base Payload class - includes getter+setter for payload types, client ids, and messages, and toString()
+ */
